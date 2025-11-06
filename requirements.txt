@@ -1,0 +1,19 @@
+# PhysVLM-Intent 项目依赖
+
+# 音频处理
+pydub>=0.25.1
+dashscope>=1.10.0
+
+# 视频处理
+opencv-python>=4.8.0
+
+# LLM客户端
+openai>=1.0.0
+
+# Web服务器（标注工具）
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# 基础工具
+numpy>=1.24.0
+
