@@ -6,7 +6,7 @@
       "video_count": 0,
       "processed_count": 1,
       "status": "completed",
-      "last_updated": "2025-11-11 21:27:33",
+      "last_updated": "2025-11-12 01:21:53",
       "videos": {}
     }
   },
@@ -14,11 +14,11 @@
     "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/IMG_3492_pipeline_data.json": {
       "collection_id": 1,
       "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",
-      "created_at": "2025-11-11 21:27:33",
-      "viewed_at": "2025-11-12 01:13:26",
-      "view_count": 103,
-      "verified": true,
-      "verified_at": "2025-11-12 01:13:37"
+      "created_at": "2025-11-12 01:21:53",
+      "viewed_at": "2025-11-12 02:08:17",
+      "view_count": 5,
+      "verified": false,
+      "verified_at": null
     }
   },
   "operation_logs": [
@@ -35,6 +35,39 @@
       "timestamp": "2025-11-12 01:13:37",
       "operation_type": "verify_annotation",
       "description": "验证标注: IMG_3492.MOV",
+      "details": {
+        "result_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/IMG_3492_pipeline_data.json",
+        "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",
+        "video_name": "IMG_3492.MOV"
+      }
+    },
+    {
+      "timestamp": "2025-11-12 01:21:53",
+      "operation_type": "generate_annotation",
+      "description": "生成标注: IMG_3492.MOV",
+      "details": {
+        "collection_id": 1,
+        "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",
+        "video_name": "IMG_3492.MOV",
+        "result_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/IMG_3492_pipeline_data.json"
+      }
+    },
+    {
+      "timestamp": "2025-11-12 01:21:53",
+      "operation_type": "pipeline_batch_complete",
+      "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+      "details": {
+        "collection_id": 1,
+        "collection_name": "把这个放那个的右边 - 办公环境",
+        "processed_count": 1,
+        "failed_count": 0,
+        "total_videos": 1
+      }
+    },
+    {
+      "timestamp": "2025-11-12 01:22:08",
+      "operation_type": "view_annotation",
+      "description": "查看标注: IMG_3492.MOV",
       "details": {
         "result_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/IMG_3492_pipeline_data.json",
         "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",

@@ -43,12 +43,8 @@ PhysVLM-Intent/
 ├── start_collection.py          # 启动数据采集工具（单元测试用）
 ├── data_label_gen_pipeline.py   # Pipeline主入口文件（向后兼容）
 ├── web_html/                    # Web前端页面
-│   ├── unified_app.html         # 统一Web应用前端页面
-│   ├── collection_tool.html     # 数据采集工具页面
-│   ├── pipeline_page.html       # 标注生成页面
-│   ├── annotation_page.html     # 标注检验页面
-│   ├── annotation_tool.html      # 标注工具页面
-│   └── history_page.html        # 历史记录页面
+│   ├── collection_tool.html     # 数据采集工具页面（用于统一应用）
+│   └── annotation_tool.html     # 标注工具页面（用于统一应用）
 └── requirements.txt             # 项目依赖
 ```
 

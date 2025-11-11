@@ -23,7 +23,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from pipeline.pipeline import IntentLabelPipeline
-from config.settings import Config, PIPELINE_DATA_FILE
+from config.settings import Config
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -321,6 +321,24 @@ def collection_tool():
         with open(html_file, 'r', encoding='utf-8') as f:
             return f.read()
     return "数据采集工具页面未找到", 404
+
+@app.route('/tools/pipeline/pipeline_tool.html')
+def pipeline_tool():
+    """返回标注生成工具页面"""
+    html_file = os.path.join(PROJECT_ROOT, 'web_html/pipeline_tool.html')
+    if os.path.exists(html_file):
+        with open(html_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    return "标注生成工具页面未找到", 404
+
+@app.route('/tools/annotation/annotation_verification_tool.html')
+def annotation_verification_tool():
+    """返回标注检验工具页面"""
+    html_file = os.path.join(PROJECT_ROOT, 'web_html/annotation_verification_tool.html')
+    if os.path.exists(html_file):
+        with open(html_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    return "标注检验工具页面未找到", 404
 
 @app.route('/tools/annotation/annotation_tool.html')
 def annotation_tool():

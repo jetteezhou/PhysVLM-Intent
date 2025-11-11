@@ -5,7 +5,6 @@ import os
 import sys
 import subprocess
 import json
-from pathlib import Path
 
 # 获取项目根目录和当前脚本目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

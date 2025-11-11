@@ -16,37 +16,97 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             color: #333;
             min-height: 100vh;
-            padding: 20px;
+            padding-bottom: 40px;
         }
 
-        .annotation-container {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            max-width: 1600px;
+        .container {
+            max-width: 100%;
             margin: 0 auto;
+            padding: 12px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 0.9em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
         }
 
         .section-title {
-            font-size: 1.6em;
+            font-size: 1.3em;
             font-weight: 700;
-            margin-bottom: 25px;
+            margin-bottom: 14px;
             color: #2c3e50;
             border-bottom: 3px solid;
             border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
-            padding-bottom: 12px;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 14px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: 600;
             color: #495057;
+            font-size: 0.9em;
         }
 
         .form-group select {
@@ -56,21 +116,71 @@
             border-radius: 10px;
             font-size: 0.95em;
             transition: all 0.3s ease;
+            background: #fafbfc;
+            font-family: inherit;
         }
 
         .form-group select:focus {
             outline: none;
             border-color: #667eea;
+            background: white;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-right: 10px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
         }
 
         .collection-card {
             background: white;
             border: 2px solid #e9ecef;
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             transition: all 0.3s ease;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .collection-card:hover {
@@ -87,11 +197,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .collection-title {
-            font-size: 1.2em;
+            font-size: 1.1em;
             font-weight: 700;
             color: #2c3e50;
         }
@@ -134,34 +244,10 @@
             font-weight: 600;
         }
 
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.95em;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin-right: 10px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .iframe-container {
-            width: 100%;
-            height: 800px;
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            background: white;
+        #annotation-files-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
         }
 
         .status-message {
@@ -170,6 +256,19 @@
             margin-top: 20px;
             font-weight: 600;
             display: none;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .status-success {
@@ -189,14 +288,38 @@
             color: #0c5460;
             border-left: 4px solid #17a2b8;
         }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+        }
     </style>
 </head>
 <body>
-    <div class="annotation-container">
-        <h2 class="section-title">✏️ 标注检验</h2>
-        
-        <!-- 任务选择 -->
-        <div style="margin-bottom: 30px;">
+    <div class="container">
+        <div class="header">
+            <h1>✏️ 标注检验</h1>
+            <p>查看和验证已生成的标注文件</p>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">📋 选择任务</h2>
+            
             <div class="form-group">
                 <label>选择采集任务</label>
                 <select id="annotation-collection-select" onchange="handleAnnotationCollectionSelect()">
@@ -225,15 +348,9 @@
         </div>
         
         <!-- 标注文件列表 -->
-        <div id="annotation-files-list" style="display: none; margin-bottom: 20px;">
-            <h3 style="margin-bottom: 15px; color: #2c3e50;">标注文件列表</h3>
+        <div class="card" id="annotation-files-list" style="display: none;">
+            <h2 class="section-title">📄 标注文件列表</h2>
             <div id="annotation-files-container" style="display: grid; gap: 15px;"></div>
-        </div>
-        
-        <!-- 标注工具iframe -->
-        <div id="annotation-tool-container" style="display: none;">
-            <h3 style="margin-bottom: 15px; color: #2c3e50;">标注工具</h3>
-            <iframe id="annotation-iframe" class="iframe-container"></iframe>
         </div>
 
         <div id="status-message" class="status-message"></div>
@@ -242,54 +359,6 @@
     <script>
         let currentAnnotationCollection = null;
         let currentAnnotationFileIndex = -1;
-
-        // 页面加载时初始化
-        window.addEventListener('load', () => {
-            loadAnnotationCollections();
-            
-            // 监听iframe消息（标注验证完成）
-            window.addEventListener('message', async (event) => {
-                if (event.data && event.data.type === 'annotation_verified') {
-                    const resultFile = event.data.result_file;
-                    
-                    // 刷新标注任务列表
-                    await loadAnnotationCollections();
-                    
-                    // 更新当前任务数据
-                    const select = document.getElementById('annotation-collection-select');
-                    if (select.value && currentAnnotationCollection) {
-                        // 重新加载任务数据
-                        const response = await fetch('/api/annotation/collections');
-                        const data = await response.json();
-                        if (data.success) {
-                            const collection = data.collections.find(
-                                c => c.id == select.value
-                            );
-                            if (collection) {
-                                currentAnnotationCollection = collection;
-                                displayAnnotationCollection(collection);
-                                
-                                // 自动打开下一个未验证的文件
-                                openNextUnverifiedAnnotation();
-                            }
-                        }
-                    }
-                }
-            });
-
-            // 监听来自父页面的消息（从历史记录页面打开标注）
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'open_annotation') {
-                    const resultFile = event.data.result_file;
-                    if (resultFile) {
-                        // 显示标注工具iframe
-                        const iframe = document.getElementById('annotation-iframe');
-                        iframe.src = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
-                        document.getElementById('annotation-tool-container').style.display = 'block';
-                    }
-                }
-            });
-        });
 
         // 加载标注任务列表
         async function loadAnnotationCollections() {
@@ -329,11 +398,10 @@
             if (select.value && selectedOption.dataset.collection) {
                 const collection = JSON.parse(selectedOption.dataset.collection);
                 displayAnnotationCollection(collection);
-                currentAnnotationFileIndex = -1; // 重置当前文件索引
+                currentAnnotationFileIndex = -1;
             } else {
                 document.getElementById('annotation-progress-info').style.display = 'none';
                 document.getElementById('annotation-files-list').style.display = 'none';
-                document.getElementById('annotation-tool-container').style.display = 'none';
                 currentAnnotationCollection = null;
                 currentAnnotationFileIndex = -1;
             }
@@ -341,10 +409,8 @@
 
         // 显示标注任务详情
         function displayAnnotationCollection(collection) {
-            // 保存当前任务数据
             currentAnnotationCollection = collection;
             
-            // 显示进度信息
             document.getElementById('annotation-collection-name').textContent = collection.name;
             document.getElementById('annotation-total-count').textContent = collection.total_annotations;
             document.getElementById('annotation-verified-count').textContent = collection.verified_count;
@@ -359,7 +425,6 @@
             
             document.getElementById('annotation-progress-info').style.display = 'block';
             
-            // 显示标注文件列表
             renderAnnotationFiles(collection.annotations);
             document.getElementById('annotation-files-list').style.display = 'block';
         }
@@ -370,7 +435,7 @@
             container.innerHTML = '';
             
             if (annotations.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #6c757d;">该任务暂无标注文件</p>';
+                container.innerHTML = '<p style="text-align: center; color: #6c757d; grid-column: 1 / -1;">该任务暂无标注文件</p>';
                 return;
             }
             
@@ -401,7 +466,6 @@
 
         // 打开标注文件
         function openAnnotationFile(resultFile, isVerified) {
-            // 找到当前文件在列表中的索引
             if (currentAnnotationCollection && currentAnnotationCollection.annotations) {
                 const index = currentAnnotationCollection.annotations.findIndex(
                     ann => ann.result_file === resultFile
@@ -409,16 +473,40 @@
                 currentAnnotationFileIndex = index;
             }
             
-            // 显示标注工具iframe
-            const iframe = document.getElementById('annotation-iframe');
-            iframe.src = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
-            document.getElementById('annotation-tool-container').style.display = 'block';
-            
-            // 滚动到iframe
-            setTimeout(() => {
-                iframe.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+            // 通知父窗口打开标注工具
+            if (window.parent && window.parent.openAnnotationModal) {
+                window.parent.openAnnotationModal(resultFile);
+            } else {
+                // 如果不在iframe中，直接打开
+                window.open(`/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`, '_blank');
+            }
         }
+
+        // 监听来自父窗口的消息（标注验证完成）
+        window.addEventListener('message', async (event) => {
+            if (event.data && event.data.type === 'annotation_verified') {
+                const resultFile = event.data.result_file;
+                
+                await loadAnnotationCollections();
+                
+                const select = document.getElementById('annotation-collection-select');
+                if (select.value && currentAnnotationCollection) {
+                    const response = await fetch('/api/annotation/collections');
+                    const data = await response.json();
+                    if (data.success) {
+                        const collection = data.collections.find(
+                            c => c.id == select.value
+                        );
+                        if (collection) {
+                            currentAnnotationCollection = collection;
+                            displayAnnotationCollection(collection);
+                            
+                            openNextUnverifiedAnnotation();
+                        }
+                    }
+                }
+            }
+        });
 
         // 打开下一个未验证的标注文件
         function openNextUnverifiedAnnotation() {
@@ -426,22 +514,18 @@
                 return;
             }
             
-            // 找到下一个未验证的文件
             const unverifiedFiles = currentAnnotationCollection.annotations.filter(
                 ann => !ann.verified && ann.file_exists
             );
             
             if (unverifiedFiles.length === 0) {
                 showStatus('🎉 恭喜！所有标注文件都已验证完成！', 'success');
-                // 刷新任务列表以更新进度
                 loadAnnotationCollections();
                 return;
             }
             
-            // 如果当前有打开的文件，找到它的下一个未验证文件
             let nextFile = null;
             if (currentAnnotationFileIndex >= 0) {
-                // 从当前文件之后开始查找
                 for (let i = currentAnnotationFileIndex + 1; i < currentAnnotationCollection.annotations.length; i++) {
                     const ann = currentAnnotationCollection.annotations[i];
                     if (!ann.verified && ann.file_exists) {
@@ -449,7 +533,6 @@
                         break;
                     }
                 }
-                // 如果后面没有，从头开始查找
                 if (!nextFile) {
                     for (let i = 0; i < currentAnnotationFileIndex; i++) {
                         const ann = currentAnnotationCollection.annotations[i];
@@ -460,12 +543,10 @@
                     }
                 }
             } else {
-                // 如果没有当前文件，直接取第一个未验证的
                 nextFile = unverifiedFiles[0];
             }
             
             if (nextFile) {
-                // 延迟一下，让用户看到验证成功的消息
                 setTimeout(() => {
                     openAnnotationFile(nextFile.result_file, false);
                     showStatus(`已自动打开下一个未验证文件: ${nextFile.video_name}`, 'info');
@@ -475,7 +556,6 @@
             }
         }
 
-        // 显示状态消息
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status-message');
             statusDiv.textContent = message;
@@ -486,6 +566,12 @@
                 statusDiv.style.display = 'none';
             }, 5000);
         }
+
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            loadAnnotationCollections();
+            setInterval(loadAnnotationCollections, 2000);
+        });
     </script>
 </body>
 </html>

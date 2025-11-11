@@ -17,37 +17,97 @@
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             color: #333;
             min-height: 100vh;
-            padding: 20px;
+            padding-bottom: 40px;
         }
 
-        .pipeline-container {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            max-width: 1800px;
+        .container {
+            max-width: 100%;
             margin: 0 auto;
+            padding: 12px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 0.9em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
         }
 
         .section-title {
-            font-size: 1.4em;
+            font-size: 1.3em;
             font-weight: 700;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
             color: #2c3e50;
             border-bottom: 3px solid;
             border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: 600;
             color: #495057;
+            font-size: 0.9em;
         }
 
         .form-group select,
@@ -58,12 +118,15 @@
             border-radius: 10px;
             font-size: 0.95em;
             transition: all 0.3s ease;
+            background: #fafbfc;
+            font-family: inherit;
         }
 
         .form-group select:focus,
         .form-group input:focus {
             outline: none;
             border-color: #667eea;
+            background: white;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
@@ -74,8 +137,35 @@
             cursor: pointer;
             font-size: 0.95em;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin-right: 10px;
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .btn-primary {
@@ -84,8 +174,7 @@
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
         }
 
         .btn-primary:disabled {
@@ -94,9 +183,110 @@
             transform: none;
         }
 
+        .collection-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.3s ease;
+            margin-bottom: 12px;
+        }
+
+        .collection-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .collection-card.processing {
+            border-color: #ffa502;
+            background: #fff8e1;
+        }
+
+        .collection-card.completed {
+            border-color: #38ef7d;
+            background: #e8f5e9;
+        }
+
+        .collection-card.failed {
+            border-color: #ff4757;
+            background: #ffebee;
+        }
+
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .collection-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .collection-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .status-processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-partial {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .collection-progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .collection-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        #collections-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+        }
+
         .progress-section {
-            margin-top: 20px;
-            padding: 20px;
+            margin-top: 30px;
+            padding: 25px;
             background: #f8f9fa;
             border-radius: 12px;
             display: none;
@@ -144,15 +334,15 @@
         }
 
         .log-container {
-            max-height: 350px;
+            max-height: 400px;
             overflow-y: auto;
             background: #1e1e1e;
             color: #d4d4d4;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             font-family: 'Courier New', monospace;
-            font-size: 0.8em;
-            line-height: 1.5;
+            font-size: 0.85em;
+            line-height: 1.6;
         }
 
         .log-entry {
@@ -185,6 +375,19 @@
             margin-top: 20px;
             font-weight: 600;
             display: none;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .status-success {
@@ -205,155 +408,81 @@
             border-left: 4px solid #17a2b8;
         }
 
-        .collection-card {
-            background: white;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 15px;
-            transition: all 0.3s ease;
-            margin-bottom: 12px;
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
         }
 
-        .collection-card:hover {
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-        }
-
-        .collection-card.processing {
-            border-color: #ffa502;
-            background: #fff8e1;
-        }
-
-        .collection-card.completed {
-            border-color: #38ef7d;
-            background: #e8f5e9;
-        }
-
-        .collection-card.failed {
-            border-color: #ff4757;
-            background: #ffebee;
-        }
-
-        .collection-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .collection-title {
-            font-size: 1.2em;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-
-        .collection-status {
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.85em;
-            font-weight: 600;
-        }
-
-        .status-pending {
-            background: #e9ecef;
-            color: #6c757d;
-        }
-
-        .status-processing {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-partial {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-
-        .status-failed {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .collection-progress {
-            margin-top: 10px;
-        }
-
-        .collection-progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #e9ecef;
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
             border-radius: 10px;
-            overflow: hidden;
-            margin-top: 8px;
         }
 
-        .collection-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
-            transition: width 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.8em;
-            font-weight: 600;
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
         }
     </style>
 </head>
 <body>
-    <div class="pipeline-container">
-        <h2 class="section-title">🎬 标注生成Pipeline</h2>
-        
-        <!-- 历史记录显示 -->
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 12px; color: #2c3e50; font-size: 1.2em;">📊 采集任务列表</h3>
-            <div id="collections-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 12px;"></div>
-        </div>
-        
-        <div class="form-group">
-            <label>选择采集任务（将处理该任务文件夹中的所有视频）</label>
-            <select id="collection-select" onchange="handleCollectionSelect()">
-                <option value="">请选择采集任务</option>
-            </select>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 标注生成Pipeline</h1>
+            <p>批量处理采集任务中的视频，自动生成标注数据</p>
         </div>
 
-        <div id="collection-info" style="display: none; margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 10px;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                <div><strong>任务名称：</strong><span id="collection-name"></span></div>
-                <div><strong>视频数量：</strong><span id="collection-video-count"></span></div>
-                <div><strong>已处理：</strong><span id="collection-processed-count"></span></div>
-                <div><strong>状态：</strong><span id="collection-status"></span></div>
-            </div>
+        <div class="card">
+            <h2 class="section-title">📊 采集任务列表</h2>
+            <div id="collections-list" style="display: grid; gap: 15px; margin-bottom: 20px;"></div>
         </div>
 
-        <div class="form-group">
-            <button class="btn btn-primary" id="start-pipeline-btn" onclick="startPipeline()" disabled>
-                🚀 开始批量生成标注
-            </button>
-        </div>
-
-        <!-- 进度显示区域 -->
-        <div id="progress-section" class="progress-section">
-            <div class="progress-info">
-                <div class="progress-step" id="progress-step">准备中...</div>
-                <div class="progress-message" id="progress-message">等待开始...</div>
-            </div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
-            </div>
-            <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
-                <span id="current-video-info"></span>
+        <div class="card">
+            <h2 class="section-title">🚀 开始处理</h2>
+            
+            <div class="form-group">
+                <label>选择采集任务（将处理该任务文件夹中的所有视频）</label>
+                <select id="collection-select" onchange="handleCollectionSelect()">
+                    <option value="">请选择采集任务</option>
+                </select>
             </div>
 
-            <h3 style="margin-top: 20px; margin-bottom: 10px;">处理日志</h3>
-            <div class="log-container" id="log-container"></div>
+            <div id="collection-info" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                <h4 style="margin-bottom: 10px;">任务信息</h4>
+                <p><strong>任务名称：</strong><span id="collection-name"></span></p>
+                <p><strong>视频数量：</strong><span id="collection-video-count"></span></p>
+                <p><strong>已处理：</strong><span id="collection-processed-count"></span></p>
+                <p><strong>状态：</strong><span id="collection-status"></span></p>
+            </div>
 
-            <div id="status-message" class="status-message"></div>
+            <div class="form-group">
+                <button class="btn btn-primary" id="start-pipeline-btn" onclick="startPipeline()" disabled>
+                    🚀 开始批量生成标注
+                </button>
+            </div>
+
+            <!-- 进度显示区域 -->
+            <div id="progress-section" class="progress-section">
+                <div class="progress-info">
+                    <div class="progress-step" id="progress-step">准备中...</div>
+                    <div class="progress-message" id="progress-message">等待开始...</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                    <span id="current-video-info"></span>
+                </div>
+
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">处理日志</h3>
+                <div class="log-container" id="log-container"></div>
+
+                <div id="status-message" class="status-message"></div>
+            </div>
         </div>
     </div>
 
@@ -361,7 +490,6 @@
         let socket = null;
         let currentTaskId = null;
         let selectedCollectionId = null;
-        let refreshInterval = null;
         let lastLogCount = 0;
 
         // 初始化Socket连接
@@ -376,7 +504,6 @@
                 if (data.task_id === currentTaskId) {
                     updateProgress(data);
                 }
-                // 实时刷新采集任务列表
                 loadCollections();
             });
 
@@ -384,7 +511,6 @@
                 if (data.task_id === currentTaskId) {
                     handlePipelineComplete(data);
                 }
-                // 刷新采集任务列表
                 loadCollections();
             });
 
@@ -392,30 +518,11 @@
                 if (data.task_id === currentTaskId) {
                     handlePipelineError(data);
                 }
-                // 刷新采集任务列表
                 loadCollections();
             });
         }
 
-        // 开始自动刷新
-        function startAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-            }
-            refreshInterval = setInterval(() => {
-                loadCollections();
-            }, 2000); // 每2秒刷新一次
-        }
-
-        // 停止自动刷新
-        function stopAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-            }
-        }
-
-        // 加载采集任务列表（带历史记录）
+        // 加载采集任务列表
         async function loadCollections() {
             try {
                 const response = await fetch('/api/history/collections');
@@ -436,7 +543,7 @@
             container.innerHTML = '';
             
             if (collections.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #6c757d;">暂无采集任务</p>';
+                container.innerHTML = '<p style="text-align: center; color: #6c757d; grid-column: 1 / -1;">暂无采集任务</p>';
                 return;
             }
             
@@ -452,15 +559,14 @@
                 card.className = cardClass;
                 card.innerHTML = `
                     <div class="collection-header">
-                        <div class="collection-title" style="font-size: 1em;">${col.name}</div>
+                        <div class="collection-title">${col.name}</div>
                         <span class="collection-status ${statusClass}">${getStatusText(col.status)}</span>
                     </div>
-                    <div style="color: #6c757d; font-size: 0.85em; margin-bottom: 8px; line-height: 1.5;">
-                        <div>视频: ${col.video_count} | 已处理: ${col.processed_count}</div>
-                        <div>最后更新: ${col.last_updated || '从未'}</div>
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 10px;">
+                        视频数量: ${col.video_count} | 已处理: ${col.processed_count} | 最后更新: ${col.last_updated || '从未'}
                     </div>
                     <div class="collection-progress">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #6c757d; margin-bottom: 6px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #6c757d;">
                             <span>处理进度</span>
                             <span>${progress}%</span>
                         </div>
@@ -475,7 +581,6 @@
             });
         }
 
-        // 获取状态文本
         function getStatusText(status) {
             const statusMap = {
                 'pending': '待处理',
@@ -487,7 +592,6 @@
             return statusMap[status] || status;
         }
 
-        // 更新采集任务选择下拉框
         function updateCollectionSelect(collections) {
             const select = document.getElementById('collection-select');
             const currentValue = select.value;
@@ -506,13 +610,11 @@
             }
         }
 
-        // 处理采集任务选择
         function handleCollectionSelect() {
             const collectionId = document.getElementById('collection-select').value;
             selectedCollectionId = collectionId ? parseInt(collectionId) : null;
             
             if (selectedCollectionId) {
-                // 加载任务详情
                 loadCollectionDetails(selectedCollectionId);
                 document.getElementById('collection-info').style.display = 'block';
                 document.getElementById('start-pipeline-btn').disabled = false;
@@ -522,7 +624,6 @@
             }
         }
 
-        // 加载采集任务详情
         async function loadCollectionDetails(collectionId) {
             try {
                 const response = await fetch('/api/history/collections');
@@ -542,7 +643,6 @@
             }
         }
 
-        // 开始Pipeline处理
         async function startPipeline() {
             if (!selectedCollectionId) {
                 showStatus('请先选择采集任务', 'error');
@@ -567,10 +667,9 @@
                     document.getElementById('progress-section').classList.add('active');
                     document.getElementById('start-pipeline-btn').disabled = true;
                     document.getElementById('log-container').innerHTML = '';
-                    lastLogCount = 0; // 重置日志计数
+                    lastLogCount = 0;
                     addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个视频`, 'info');
                     
-                    // 开始轮询状态
                     pollPipelineStatus(data.task_id);
                 } else {
                     showStatus('启动Pipeline失败: ' + data.error, 'error');
@@ -581,7 +680,6 @@
             }
         }
 
-        // 轮询Pipeline状态
         async function pollPipelineStatus(taskId) {
             const interval = setInterval(async () => {
                 try {
@@ -596,13 +694,11 @@
                             message: task.message
                         });
 
-                        // 更新当前视频信息
                         if (task.current_video) {
                             document.getElementById('current-video-info').textContent = 
                                 `正在处理: ${task.current_video} (${task.current_video_index}/${task.total_videos})`;
                         }
 
-                        // 显示新日志（只显示新增的日志）
                         if (task.logs && task.logs.length > lastLogCount) {
                             const logContainer = document.getElementById('log-container');
                             const newLogs = task.logs.slice(lastLogCount);
@@ -631,7 +727,6 @@
             }, 1000);
         }
 
-        // 更新进度显示
         function updateProgress(data) {
             document.getElementById('progress-bar').style.width = data.progress + '%';
             document.getElementById('progress-bar').textContent = data.progress + '%';
@@ -639,7 +734,6 @@
             document.getElementById('progress-message').textContent = data.message || '';
         }
 
-        // 添加日志
         function addLog(step, message, type = 'info') {
             const logContainer = document.getElementById('log-container');
             const time = new Date().toLocaleTimeString();
@@ -650,36 +744,20 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // 处理Pipeline完成
         function handlePipelineComplete(data) {
             addLog('系统', 'Pipeline批量处理完成！', 'success');
             showStatus(`✅ Pipeline处理完成！成功: ${data.processed_count}, 失败: ${data.failed_count}`, 'success');
             document.getElementById('start-pipeline-btn').disabled = false;
-            
-            // 刷新采集任务列表
             loadCollections();
-            
-            // 通知父页面（如果在iframe中）
-            if (window.parent !== window) {
-                try {
-                    window.parent.postMessage({ type: 'pipeline_complete', data: data }, '*');
-                } catch (e) {
-                    console.log('无法通知父页面:', e);
-                }
-            }
         }
 
-        // 处理Pipeline错误
         function handlePipelineError(data) {
             addLog('错误', data.error || '处理失败', 'error');
             showStatus('❌ Pipeline处理失败: ' + (data.error || '未知错误'), 'error');
             document.getElementById('start-pipeline-btn').disabled = false;
-            
-            // 刷新采集任务列表
             loadCollections();
         }
 
-        // 显示状态消息
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status-message');
             statusDiv.textContent = message;
@@ -695,12 +773,7 @@
         window.addEventListener('load', () => {
             initSocket();
             loadCollections();
-            startAutoRefresh();
-        });
-
-        // 页面卸载时清理
-        window.addEventListener('beforeunload', () => {
-            stopAutoRefresh();
+            setInterval(loadCollections, 2000);
         });
     </script>
 </body>

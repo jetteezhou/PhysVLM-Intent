@@ -747,97 +747,12 @@
 
     <!-- Pipeline标注生成模块 -->
     <div id="pipeline-tab" class="tab-content">
-        <div class="pipeline-container">
-            <h2 class="section-title">🎬 标注生成Pipeline</h2>
-            
-            <!-- 历史记录显示 -->
-            <div style="margin-bottom: 30px;">
-                <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 采集任务列表</h3>
-                <div id="collections-list" style="display: grid; gap: 15px;"></div>
-            </div>
-            
-            <div class="form-group">
-                <label>选择采集任务（将处理该任务文件夹中的所有视频）</label>
-                <select id="collection-select" onchange="handleCollectionSelect()">
-                    <option value="">请选择采集任务</option>
-                </select>
-            </div>
-
-            <div id="collection-info" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
-                <h4 style="margin-bottom: 10px;">任务信息</h4>
-                <p><strong>任务名称：</strong><span id="collection-name"></span></p>
-                <p><strong>视频数量：</strong><span id="collection-video-count"></span></p>
-                <p><strong>已处理：</strong><span id="collection-processed-count"></span></p>
-                <p><strong>状态：</strong><span id="collection-status"></span></p>
-            </div>
-
-            <div class="form-group">
-                <button class="btn btn-primary" id="start-pipeline-btn" onclick="startPipeline()" disabled>
-                    🚀 开始批量生成标注
-                </button>
-            </div>
-
-            <!-- 进度显示区域 -->
-            <div id="progress-section" class="progress-section">
-                <div class="progress-info">
-                    <div class="progress-step" id="progress-step">准备中...</div>
-                    <div class="progress-message" id="progress-message">等待开始...</div>
-                </div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
-                </div>
-                <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
-                    <span id="current-video-info"></span>
-                </div>
-
-                <h3 style="margin-top: 20px; margin-bottom: 10px;">处理日志</h3>
-                <div class="log-container" id="log-container"></div>
-
-                <div id="status-message" class="status-message"></div>
-            </div>
-        </div>
+        <iframe class="iframe-container" src="/tools/pipeline/pipeline_tool.html"></iframe>
     </div>
 
     <!-- 标注检验模块 -->
     <div id="annotation-tab" class="tab-content">
-        <div class="pipeline-container">
-            <h2 class="section-title">✏️ 标注检验</h2>
-            
-            <!-- 任务选择 -->
-            <div style="margin-bottom: 30px;">
-                <div class="form-group">
-                    <label>选择采集任务</label>
-                    <select id="annotation-collection-select" onchange="handleAnnotationCollectionSelect()">
-                        <option value="">请选择采集任务</option>
-                    </select>
-                </div>
-                
-                <!-- 验证进度显示 -->
-                <div id="annotation-progress-info" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
-                    <h4 style="margin-bottom: 10px;">验证进度</h4>
-                    <p><strong>任务名称：</strong><span id="annotation-collection-name"></span></p>
-                    <p><strong>标注文件总数：</strong><span id="annotation-total-count"></span></p>
-                    <p><strong>已验证：</strong><span id="annotation-verified-count"></span></p>
-                    <div style="margin-top: 10px;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #6c757d;">
-                            <span>验证进度</span>
-                            <span id="annotation-progress-percent">0%</span>
-                        </div>
-                        <div class="collection-progress-bar">
-                            <div class="collection-progress-fill" id="annotation-progress-bar" style="width: 0%">
-                                0 / 0
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 标注文件列表 -->
-            <div id="annotation-files-list" style="display: none; margin-bottom: 20px;">
-                <h3 style="margin-bottom: 15px; color: #2c3e50;">标注文件列表</h3>
-                <div id="annotation-files-container" style="display: grid; gap: 15px;"></div>
-            </div>
-        </div>
+        <iframe class="iframe-container" src="/tools/annotation/annotation_verification_tool.html"></iframe>
     </div>
 
     <!-- 历史记录模块 -->
@@ -1422,7 +1337,8 @@
         }
 
         // 打开标注工具模态框
-        function openAnnotationModal(resultFile) {
+        // 打开标注工具模态框（全局函数，供iframe调用）
+        window.openAnnotationModal = function(resultFile) {
             const modal = document.getElementById('annotation-modal');
             const iframe = document.getElementById('annotation-iframe');
             if (modal && iframe) {
@@ -1431,6 +1347,10 @@
                 // 阻止body滚动
                 document.body.style.overflow = 'hidden';
             }
+        };
+
+        function openAnnotationModal(resultFile) {
+            window.openAnnotationModal(resultFile);
         }
 
         // 关闭标注工具模态框
