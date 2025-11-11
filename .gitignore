@@ -33,16 +33,16 @@ ENV/
 *~
 
 # 输出文件
-output_frames/
-annotation_backups/
-runs/
-*.mp3
-*.mp4
-*.avi
-*.jpg
-*.png
-pipeline_data.json
-pipeline_point_result*.jpg
+# output_frames/
+# annotation_backups/
+# runs/
+# *.mp3
+# *.mp4
+# *.avi
+# *.jpg
+# *.png
+# pipeline_data.json
+# pipeline_point_result*.jpg
 
 # 测试数据（如果不需要版本控制）
 # test_data/
