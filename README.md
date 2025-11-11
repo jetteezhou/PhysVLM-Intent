@@ -36,10 +36,20 @@ PhysVLM-Intent/
 │   └── QUICK_START.md          # 快速开始指南
 ├── models/                      # 模型文件
 │   └── sam2.1_b.pt            # SAM模型
-├── data_label_gen_pipeline.py  # 主入口文件（向后兼容）
-├── start_annotation.py         # 启动标注工具（便捷脚本）
-├── start_collection.py         # 启动数据采集工具（便捷脚本）
-└── requirements.txt            # 项目依赖
+├── unified_server.py            # 统一Web应用服务器（推荐）
+├── start_unified_app.py         # 启动统一Web应用（便捷脚本）
+├── start_pipeline.py            # 启动标注生成Pipeline（单元测试用）
+├── start_annotation.py          # 启动标注检验工具（单元测试用）
+├── start_collection.py          # 启动数据采集工具（单元测试用）
+├── data_label_gen_pipeline.py   # Pipeline主入口文件（向后兼容）
+├── web_html/                    # Web前端页面
+│   ├── unified_app.html         # 统一Web应用前端页面
+│   ├── collection_tool.html     # 数据采集工具页面
+│   ├── pipeline_page.html       # 标注生成页面
+│   ├── annotation_page.html     # 标注检验页面
+│   ├── annotation_tool.html      # 标注工具页面
+│   └── history_page.html        # 历史记录页面
+└── requirements.txt             # 项目依赖
 ```
 
 ## 🚀 快速开始
@@ -60,62 +70,96 @@ export OPENAI_API_KEY="your-openai-api-key"
 export OPENAI_BASE_URL="http://localhost:8000/v1"
 ```
 
-### 3. 运行Pipeline
+### 3. 使用统一Web应用（推荐）⭐
+
+运行统一Web应用，在浏览器中完成所有操作：
 
 ```bash
-python data_label_gen_pipeline.py
+python start_unified_app.py
 ```
 
-### 4. 启动标注工具
+访问 **http://localhost:5000** 打开统一应用界面。
 
-```bash
-python start_annotation.py
-```
+统一应用包含三个模块：
+- 📹 **数据采集** - 管理采集任务和视频数据
+- 🎬 **标注生成** - 运行Pipeline并实时查看进度
+- ✏️ **标注检验** - 人工检验和修正标注结果
 
-或直接运行：
+**特色功能**：
+- ✅ 实时进度显示（进度条 + 日志）
+- ✅ WebSocket实时更新
+- ✅ 完成后自动跳转到标注检验页面
+- ✅ 统一的用户界面
 
-```bash
-python tools/annotation/start_annotation_tool.py
-```
+详细使用说明请查看：[统一应用使用指南](docs/UNIFIED_APP_GUIDE.md)
 
-### 5. 启动数据采集工具
+### 4. 单独运行各个模块（单元测试）
+
+如果需要单独测试某个模块，可以使用以下脚本：
+
+#### 启动数据采集模块
 
 ```bash
 python start_collection.py
 ```
 
-或直接运行：
+访问 http://localhost:5001 进行数据采集。
+
+#### 启动标注生成Pipeline
 
 ```bash
-python tools/data_collection/start_collection_tool.py
+python start_pipeline.py
 ```
+
+或使用向后兼容的入口：
+
+```bash
+python data_label_gen_pipeline.py
+```
+
+#### 启动标注检验模块
+
+```bash
+python start_annotation.py
+```
+
+访问 http://localhost:5001 进行标注检验。
 
 ## 📚 文档
 
+- [统一应用使用指南](docs/UNIFIED_APP_GUIDE.md) - **统一Web应用详细文档（推荐阅读）** ⭐
 - [Pipeline使用说明](docs/README_PIPELINE.md) - Pipeline详细文档
 - [标注工具使用说明](docs/README_annotation.md) - 标注工具详细文档
 - [快速开始指南](docs/QUICK_START.md) - 快速入门指南
 
 ## 🔧 主要功能
 
-1. **意图推理Pipeline** (`pipeline/`)
+1. **统一Web应用** (`unified_server.py` + `unified_app.html`) ⭐
+   - 整合数据采集、标注生成和人工检验的完整流程
+   - 实时进度显示（进度条 + 日志）
+   - WebSocket实时更新
+   - 统一的用户界面
+   - 完成后自动跳转
+
+2. **意图推理Pipeline** (`pipeline/`)
    - 语音识别（ASR）
    - 视频分割和帧采样
    - 意图分析
    - 目标定位
 
-2. **标注工具** (`tools/annotation/`)
+3. **标注检验工具** (`tools/annotation/`)
    - Web界面标注
    - 可视化修正
    - 数据备份和管理
+   - 支持相对路径和绝对路径
 
-3. **数据采集工具** (`tools/data_collection/`)
+4. **数据采集工具** (`tools/data_collection/`)
    - 管理员模式：管理任务模板和场景类型
    - 采集模式：创建采集任务，管理视频数据
    - 自动统计视频数量
    - 视频预览功能
 
-4. **SAM分割工具** (`tools/sam/`)
+6. **SAM分割工具** (`tools/sam/`)
    - 视频对象分割
    - 多目标跟踪
 
@@ -162,12 +206,23 @@ Pipeline会生成 `pipeline_data.json` 文件，包含：
 ## 📂 数据目录
 
 - `pipeline/outputs/`: Pipeline输出数据
+  - `pipeline_data.json`: 标注数据文件
+  - `output_frames/`: 视频帧图像
 - `annotation_backups/`: 标注工具备份文件
-- `data_collection/`: 数据采集工具配置文件（任务模板、场景类型、采集任务记录）
-- `collected_data/`: 采集的视频数据存储目录
+- `tools/data_collection/datas/`: 采集的视频数据存储目录
+- `tools/data_collection/task_config/`: 数据采集工具配置文件（任务模板、场景类型、采集任务记录）
 
 ## 🔗 相关链接
 
+- 统一应用使用指南: [docs/UNIFIED_APP_GUIDE.md](docs/UNIFIED_APP_GUIDE.md) - **推荐阅读** ⭐
 - Pipeline文档: [docs/README_PIPELINE.md](docs/README_PIPELINE.md)
 - 标注工具文档: [docs/README_annotation.md](docs/README_annotation.md)
+
+## ✨ 新特性
+
+- ✅ **统一Web应用**：整合数据采集、标注生成和人工检验的完整流程，支持实时进度显示 ⭐
+- ✅ **模块化设计**：三个模块可独立启动进行单元测试
+- ✅ **路径自动对齐**：自动处理相对路径和绝对路径，确保各流程无缝衔接
+- ✅ **从采集任务选择视频**：Pipeline支持直接从采集任务中选择视频进行处理
+- ✅ **实时进度显示**：Pipeline处理过程实时显示进度条和日志
 

@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>意图目标标注工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 12px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            display: none; /* 隐藏标题栏 */
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 800px 1fr; /* 图像区域固定宽度800px，右侧自适应 */
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .image-section {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+            gap: 12px;
+        }
+
+        .image-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            overflow: auto;
+            flex: 1;
+            min-height: 0;
+            background: #f8f9fa;
+        }
+
+        #main-image {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            cursor: crosshair;
+            object-fit: contain;
+        }
+
+        .point-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .point-marker:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+
+        .point-marker.object-0 {
+            background-color: #ff4757;
+        }
+
+        .point-marker.object-1 {
+            background-color: #2ed573;
+        }
+
+        .point-marker.object-2 {
+            background-color: #3742fa;
+        }
+
+        .point-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            margin-top: -8px;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+            gap: 8px; /* 添加间距 */
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .section-title {
+            font-size: 0.95em;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 3px;
+            flex-shrink: 0;
+        }
+
+        .video-info {
+            background: #f8f9fa;
+            padding: 6px 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            border: 1px solid #e9ecef;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 8px;
+        }
+
+        .video-info h3 {
+            color: #495057;
+            margin-bottom: 4px;
+            font-size: 0.85em;
+            grid-column: 1 / -1;
+        }
+
+        .video-info-left {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-info-right {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-info-item {
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .video-description {
+            background: #e9ecef;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            line-height: 1.3;
+            max-height: 60px;
+            overflow-y: auto;
+            margin-top: 0;
+            flex: 1;
+        }
+
+        .objects-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .object-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 0;
+            transition: all 0.2s ease;
+        }
+
+        .object-item.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+
+        .object-item.object-0 {
+            border-left: 4px solid #ff4757;
+        }
+
+        .object-item.object-1 {
+            border-left: 4px solid #2ed573;
+        }
+
+        .object-item.object-2 {
+            border-left: 4px solid #3742fa;
+        }
+
+        .object-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .object-id {
+            background: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        .object-coords {
+            font-size: 0.7em;
+            color: #6c757d;
+        }
+
+        .object-fields-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+            align-items: stretch;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .field-label {
+            font-size: 0.75em;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+
+        .description-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-bottom: 0;
+            resize: vertical;
+            min-height: 45px;
+            height: 45px;
+            font-family: inherit;
+            flex: 1;
+        }
+
+        .label-input {
+            width: 100%;
+            padding: 4px 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-bottom: 0;
+            font-family: inherit;
+            height: 45px;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            flex-shrink: 0;
+            margin-top: auto; /* 推到底部 */
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .status-message {
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.75em;
+            flex-shrink: 0;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 8px 10px;
+            flex-shrink: 0;
+            height: fit-content;
+        }
+
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+
+        .instructions ul {
+            color: #856404;
+            padding-left: 18px;
+            margin: 0;
+            font-size: 0.75em;
+        }
+
+        .instructions li {
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在加载数据...</p>
+        </div>
+
+        <div class="main-content" id="main-content" style="display: none;">
+            <div class="image-section">
+                <div class="video-info">
+                    <!-- <h3>🎬 视频信息</h3> -->
+                    <div class="video-info-left">
+                        <div class="video-info-item"><strong>视频:</strong> <span id="video-path"></span></div>
+                        <div class="video-info-item"><strong>图像:</strong> <span id="image-path"></span></div>
+                        <div class="video-info-item"><strong>尺寸:</strong> <span id="image-dimensions"></span></div>
+                    </div>
+                    <div class="video-info-right">
+                        <!-- <div class="video-info-item"><strong>描述:</strong></div> -->
+                        <div class="video-description" id="video-description"></div>
+                    </div>
+                </div>
+                <h2 class="section-title">📷 图像标注区域</h2>
+                <div class="image-container" id="image-container">
+                    <img id="main-image" src="" alt="标注图像">
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="instructions">
+                    <h4>📋 使用说明：</h4>
+                    <ul>
+                        <li>点击图像上的任意位置来修正物品定位点</li>
+                        <li>编辑右侧面板中的物品描述和标签</li>
+                        <li>选中物品后，点击图像即可更新该物品的位置</li>
+                        <li>完成修正后点击"保存修正结果"按钮</li>
+                    </ul>
+                </div>
+
+                <div class="control-panel">
+                    <h2 class="section-title">🎯 物品标注</h2>
+                    <div class="objects-container" id="objects-container">
+                        <!-- 物品列表将通过JavaScript动态生成 -->
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="loadData()">🔄 重载</button>
+                        <button class="btn btn-success" onclick="saveAnnotations()">💾 保存</button>
+                        <button class="btn btn-warning" onclick="resetAnnotations()">↩️ 重置</button>
+                        <button class="btn btn-success" id="verify-btn" onclick="markAsVerified()" style="background: #27ae60; display: none;">✓ 已验证</button>
+                    </div>
+
+                    <div id="status-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pipelineData = null;
+        let selectedObjectId = null;
+        let originalData = null;
+
+        // 页面加载时自动加载数据
+        window.addEventListener('load', function() {
+            loadData();
+        });
+
+        async function loadData() {
+            showLoading(true);
+            try {
+                // 检查URL参数中是否有文件路径
+                const urlParams = new URLSearchParams(window.location.search);
+                const fileParam = urlParams.get('file');
+                
+                // 构建请求URL（使用绝对路径，兼容统一服务器）
+                let url = '/pipeline_data.json';
+                if (fileParam) {
+                    url = `/pipeline_data.json?file=${encodeURIComponent(fileParam)}`;
+                }
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('无法加载数据文件');
+                }
+                
+                pipelineData = await response.json();
+                originalData = JSON.parse(JSON.stringify(pipelineData)); // 深拷贝原始数据
+                
+                // 显示/隐藏验证按钮
+                const verifyBtn = document.getElementById('verify-btn');
+                if (fileParam && verifyBtn) {
+                    verifyBtn.style.display = 'inline-block';
+                    verifyBtn.dataset.resultFile = fileParam;
+                } else if (verifyBtn) {
+                    verifyBtn.style.display = 'none';
+                }
+                
+                displayData();
+                showLoading(false);
+                showStatus('数据加载成功！', 'success');
+            } catch (error) {
+                showLoading(false);
+                showStatus('加载数据失败: ' + error.message, 'error');
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function displayData() {
+            if (!pipelineData) return;
+
+            // 显示视频信息
+            const videoPath = pipelineData.video_path || '未知';
+            const imagePathDisplay = pipelineData.last_image_path || '未知';
+            document.getElementById('video-path').textContent = videoPath.length > 30 ? videoPath.substring(0, 30) + '...' : videoPath;
+            document.getElementById('video-path').title = videoPath;
+            document.getElementById('image-path').textContent = imagePathDisplay.length > 30 ? imagePathDisplay.substring(0, 30) + '...' : imagePathDisplay;
+            document.getElementById('image-path').title = imagePathDisplay;
+            document.getElementById('image-dimensions').textContent = 
+                `${pipelineData.image_dimensions?.width || 0} × ${pipelineData.image_dimensions?.height || 0}`;
+            document.getElementById('video-description').textContent = pipelineData.video_description || '无描述';
+
+            // 加载图像
+            const mainImage = document.getElementById('main-image');
+            // 优先使用绝对路径，如果没有则使用相对路径
+            const imagePath = pipelineData.last_image_path_absolute || pipelineData.last_image_path || '';
+            
+            // 处理图像路径
+            let imageUrl = imagePath;
+            if (imagePath && !imagePath.startsWith('http') && !imagePath.startsWith('/images/')) {
+                // 如果是相对路径，直接使用（服务器会处理）
+                // 如果是绝对路径，提取相对于项目根目录的部分
+                if (imagePath.includes('pipeline/outputs')) {
+                    // 提取相对路径部分
+                    const relativePath = imagePath.split('pipeline/outputs/').pop() || imagePath.split('/').pop();
+                    imageUrl = `/images/pipeline/outputs/${relativePath}`;
+                } else {
+                    // 直接使用相对路径
+                    imageUrl = `/images/${imagePath}`;
+                }
+            }
+            
+            mainImage.src = imageUrl;
+            mainImage.onload = function() {
+                displayObjects();
+                setupImageClickHandler();
+                // 添加窗口大小变化监听，重新渲染标记点
+                window.addEventListener('resize', function() {
+                    if (pipelineData && pipelineData.objects) {
+                        pipelineData.objects.forEach(obj => {
+                            createPointMarker(obj);
+                        });
+                    }
+                });
+            };
+            
+            mainImage.onerror = function() {
+                // 如果图像加载失败，尝试直接使用原路径
+                if (imageUrl !== imagePath) {
+                    mainImage.src = imagePath;
+                }
+            };
+        }
+
+        function displayObjects() {
+            const container = document.getElementById('objects-container');
+            container.innerHTML = '';
+
+            pipelineData.objects.forEach((obj, index) => {
+                const objectDiv = document.createElement('div');
+                objectDiv.className = `object-item object-${index}`;
+                objectDiv.id = `object-${obj.id}`;
+                
+                objectDiv.innerHTML = `
+                    <div class="object-header">
+                        <span class="object-id">物品 ${index + 1}</span>
+                        <span class="object-coords">
+                            坐标: (${obj.pixel_coords[0]}, ${obj.pixel_coords[1]})
+                        </span>
+                    </div>
+                    <div class="object-fields-row">
+                        <div class="field-group">
+                            <label class="field-label"><strong>描述:</strong></label>
+                            <textarea class="description-input" 
+                                      onchange="updateObjectDescription(${obj.id}, this.value)"
+                                      placeholder="请输入物品描述...">${obj.description || ''}</textarea>
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label"><strong>标签:</strong></label>
+                            <input type="text" class="label-input" 
+                                   onchange="updateObjectLabel(${obj.id}, this.value)"
+                                   placeholder="请输入物品标签..." 
+                                   value="${obj.label || ''}">
+                        </div>
+                    </div>
+                `;
+
+                // 添加点击事件来选择物品
+                objectDiv.addEventListener('click', function() {
+                    selectObject(obj.id);
+                });
+
+                container.appendChild(objectDiv);
+
+                // 在图像上显示标记点
+                createPointMarker(obj);
+            });
+        }
+
+        function createPointMarker(obj) {
+            const imageContainer = document.getElementById('image-container');
+            const mainImage = document.getElementById('main-image');
+            
+            // 等待图像加载完成
+            if (mainImage.complete) {
+                addMarker();
+            } else {
+                mainImage.onload = addMarker;
+            }
+
+            function addMarker() {
+                // 移除已存在的标记
+                const existingMarker = document.getElementById(`marker-${obj.id}`);
+                if (existingMarker) {
+                    existingMarker.remove();
+                }
+
+                const marker = document.createElement('div');
+                marker.className = `point-marker object-${obj.id}`;
+                marker.id = `marker-${obj.id}`;
+                
+                // 获取图像的实际显示尺寸和原始尺寸
+                const imageRect = mainImage.getBoundingClientRect();
+                const containerRect = imageContainer.getBoundingClientRect();
+                
+                // 计算图像的缩放比例
+                const scaleX = mainImage.offsetWidth / pipelineData.image_dimensions.width;
+                const scaleY = mainImage.offsetHeight / pipelineData.image_dimensions.height;
+                
+                // 计算图像在容器中的偏移量（居中显示时的偏移）
+                const imageOffsetX = (containerRect.width - mainImage.offsetWidth) / 2;
+                const imageOffsetY = (containerRect.height - mainImage.offsetHeight) / 2;
+                
+                // 根据原始像素坐标和缩放比例计算标记位置
+                const relativeX = obj.pixel_coords[0] * scaleX + imageOffsetX;
+                const relativeY = obj.pixel_coords[1] * scaleY + imageOffsetY;
+                
+                marker.style.left = relativeX + 'px';
+                marker.style.top = relativeY + 'px';
+
+                // 添加标签
+                const label = document.createElement('div');
+                label.className = 'point-label';
+                label.textContent = obj.label || `物品${obj.id + 1}`;
+                marker.appendChild(label);
+
+                // 添加点击事件
+                marker.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectObject(obj.id);
+                });
+
+                imageContainer.appendChild(marker);
+            }
+        }
+
+        function setupImageClickHandler() {
+            const mainImage = document.getElementById('main-image');
+            const imageContainer = document.getElementById('image-container');
+            
+            imageContainer.addEventListener('click', function(e) {
+                if (selectedObjectId === null) {
+                    showStatus('请先选择要修正的物品', 'error');
+                    return;
+                }
+
+                const containerRect = imageContainer.getBoundingClientRect();
+                const imageRect = mainImage.getBoundingClientRect();
+                
+                // 计算点击位置相对于容器的坐标
+                const clickX = e.clientX - containerRect.left;
+                const clickY = e.clientY - containerRect.top;
+                
+                // 计算图像在容器中的偏移量（居中显示时的偏移）
+                const imageOffsetX = (containerRect.width - mainImage.offsetWidth) / 2;
+                const imageOffsetY = (containerRect.height - mainImage.offsetHeight) / 2;
+                
+                // 计算点击位置相对于图像的坐标
+                const relativeX = clickX - imageOffsetX;
+                const relativeY = clickY - imageOffsetY;
+                
+                // 检查点击是否在图像范围内
+                if (relativeX < 0 || relativeX > mainImage.offsetWidth || 
+                    relativeY < 0 || relativeY > mainImage.offsetHeight) {
+                    return; // 点击在图像外，不处理
+                }
+
+                // 转换为实际图像坐标（考虑缩放比例）
+                const scaleX = mainImage.offsetWidth / pipelineData.image_dimensions.width;
+                const scaleY = mainImage.offsetHeight / pipelineData.image_dimensions.height;
+                
+                const actualX = Math.round(relativeX / scaleX);
+                const actualY = Math.round(relativeY / scaleY);
+                
+                // 确保坐标在有效范围内
+                const clampedX = Math.max(0, Math.min(actualX, pipelineData.image_dimensions.width - 1));
+                const clampedY = Math.max(0, Math.min(actualY, pipelineData.image_dimensions.height - 1));
+
+                updateObjectPosition(selectedObjectId, clampedX, clampedY);
+            });
+        }
+
+        function selectObject(objectId) {
+            // 移除之前的选中状态
+            document.querySelectorAll('.object-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // 添加新的选中状态
+            const objectElement = document.getElementById(`object-${objectId}`);
+            if (objectElement) {
+                objectElement.classList.add('selected');
+                selectedObjectId = objectId;
+                showStatus(`已选中物品 ${objectId + 1}，点击图像来修正位置`, 'success');
+            }
+        }
+
+        function updateObjectPosition(objectId, x, y) {
+            const obj = pipelineData.objects.find(o => o.id === objectId);
+            if (!obj) return;
+
+            // 更新坐标
+            obj.pixel_coords = [x, y];
+            obj.normalized_coords = [
+                x / pipelineData.image_dimensions.width,
+                y / pipelineData.image_dimensions.height
+            ];
+            obj.point = [
+                Math.round(obj.normalized_coords[1] * 1000),  // y坐标
+                Math.round(obj.normalized_coords[0] * 1000)   // x坐标
+            ];
+
+            // 更新显示
+            updateObjectCoordinatesDisplay(objectId, x, y);
+            createPointMarker(obj);
+            
+            showStatus(`物品 ${objectId + 1} 位置已更新到 (${x}, ${y})`, 'success');
+        }
+
+        function updateObjectCoordinatesDisplay(objectId, x, y) {
+            const objectElement = document.getElementById(`object-${objectId}`);
+            if (objectElement) {
+                const coordsSpan = objectElement.querySelector('.object-coords');
+                if (coordsSpan) {
+                    coordsSpan.textContent = `坐标: (${x}, ${y})`;
+                }
+            }
+        }
+
+        function updateObjectDescription(objectId, description) {
+            const obj = pipelineData.objects.find(o => o.id === objectId);
+            if (obj) {
+                obj.description = description;
+                showStatus(`物品 ${objectId + 1} 描述已更新`, 'success');
+            }
+        }
+
+        function updateObjectLabel(objectId, label) {
+            const obj = pipelineData.objects.find(o => o.id === objectId);
+            if (obj) {
+                obj.label = label;
+                // 更新标记点的标签显示
+                const marker = document.getElementById(`marker-${objectId}`);
+                if (marker) {
+                    const labelElement = marker.querySelector('.point-label');
+                    if (labelElement) {
+                        labelElement.textContent = label || `物品${objectId + 1}`;
+                    }
+                }
+                showStatus(`物品 ${objectId + 1} 标签已更新`, 'success');
+            }
+        }
+
+        async function saveAnnotations() {
+            try {
+                showStatus('正在保存...', 'success');
+                
+                // 获取当前正在编辑的文件路径
+                const urlParams = new URLSearchParams(window.location.search);
+                const fileParam = urlParams.get('file');
+                
+                // 构建保存请求体，包含数据文件和目标文件路径
+                const saveData = {
+                    data: pipelineData,
+                    target_file: fileParam || null  // 如果指定了文件，保存到该文件；否则保存到默认文件
+                };
+                
+                // 这里可以发送到后端API保存
+                const response = await fetch('/api/save_annotations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(saveData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('标注结果保存成功！', 'success');
+                    // 更新原始数据
+                    originalData = JSON.parse(JSON.stringify(pipelineData));
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '保存失败');
+                }
+            } catch (error) {
+                // 如果没有后端API，就保存到本地存储
+                localStorage.setItem('annotationData', JSON.stringify(pipelineData));
+                showStatus('标注结果已保存到本地存储', 'success');
+                console.log('Saved data:', pipelineData);
+            }
+        }
+
+        function resetAnnotations() {
+            if (originalData) {
+                pipelineData = JSON.parse(JSON.stringify(originalData));
+                displayData();
+                selectedObjectId = null;
+                showStatus('已重置所有修改', 'success');
+            }
+        }
+
+        // 标记为已验证
+        async function markAsVerified() {
+            const verifyBtn = document.getElementById('verify-btn');
+            const resultFile = verifyBtn?.dataset.resultFile;
+            
+            if (!resultFile) {
+                showStatus('无法获取文件路径', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/annotation/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        result_file: resultFile
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus('✓ 标注已标记为已验证！', 'success');
+                    verifyBtn.style.display = 'none';
+                    
+                    // 通知父页面刷新（如果在iframe中）
+                    if (window.parent !== window) {
+                        try {
+                            window.parent.postMessage({ type: 'annotation_verified', result_file: resultFile }, '*');
+                        } catch (e) {
+                            console.log('无法通知父页面:', e);
+                        }
+                    }
+                } else {
+                    showStatus('标记验证失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showStatus('标记验证失败: ' + error.message, 'error');
+                console.error('标记验证失败:', error);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('main-content').style.display = show ? 'none' : 'grid';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

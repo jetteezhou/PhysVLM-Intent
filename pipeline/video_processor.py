@@ -1,7 +1,7 @@
 """视频处理模块"""
 import os
 import cv2
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 
 def split_video_by_words(
@@ -9,7 +9,7 @@ def split_video_by_words(
     words_list: List[Dict[str, Any]],
     output_dir: str = "output_frames",
     sampling_interval: int = 300
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], str]:
     """
     根据词汇时间戳分割视频并采样帧
     
@@ -20,20 +20,22 @@ def split_video_by_words(
         sampling_interval: 采样间隔，单位毫秒，默认300ms
     
     Returns:
-        包含词汇、时间戳和图片路径的列表
+        (result_data, last_frame_path) 元组
+        result_data: 包含词汇、时间戳和图片路径的列表
         格式: [{
             "词汇": str,
             "时间戳": [begin_time, end_time],
             "图片路径列表": [str, ...]
         }, ...]
+        last_frame_path: 视频最后一帧的图片路径
     """
     if not os.path.exists(video_path):
         print(f"错误：视频文件不存在 - {video_path}")
-        return []
+        return [], ""
     
     if not words_list:
         print("错误：词汇列表为空")
-        return []
+        return [], ""
     
     # 创建输出目录
     if not os.path.exists(output_dir):
@@ -44,7 +46,7 @@ def split_video_by_words(
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"错误：无法打开视频文件 - {video_path}")
-        return []
+        return [], ""
     
     # 获取视频信息
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -52,6 +54,9 @@ def split_video_by_words(
     duration_ms = (total_frames / fps) * 1000
     
     print(f"视频信息: FPS={fps:.2f}, 总帧数={total_frames}, 时长={duration_ms:.0f}ms")
+    
+    # 计算最后一帧的时间戳（毫秒）
+    last_frame_time_ms = int(duration_ms)
     
     result_data = []
     
@@ -112,9 +117,31 @@ def split_video_by_words(
                 "图片路径列表": image_paths
             }
             result_data.append(word_data)
+        
+        # 保存视频的最后一帧
+        print(f"\n@@@ 保存视频最后一帧...")
+        last_frame_number = total_frames - 1
+        cap.set(cv2.CAP_PROP_POS_FRAMES, last_frame_number)
+        ret, last_frame = cap.read()
+        
+        last_frame_path = ""
+        if ret:
+            # 生成最后一帧的文件名：时间戳_last.jpg
+            last_frame_filename = f"{last_frame_time_ms}_last.jpg"
+            last_frame_path = os.path.join(output_dir, last_frame_filename)
+            
+            # 保存最后一帧
+            success = cv2.imwrite(last_frame_path, last_frame)
+            if success:
+                print(f"  保存最后一帧: {last_frame_path}")
+            else:
+                print(f"  保存最后一帧失败: {last_frame_path}")
+                last_frame_path = ""
+        else:
+            print(f"  读取最后一帧失败: 帧号={last_frame_number}")
     
     finally:
         cap.release()
     
-    return result_data
+    return result_data, last_frame_path
 

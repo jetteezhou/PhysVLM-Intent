@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysVLM-Intent 统一工作流</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 顶部Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1000;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        .header-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+        }
+
+        .header-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 左侧边栏 */
+        .sidebar {
+            width: 260px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        /* 优化滚动条样式 */
+        .sidebar::-webkit-scrollbar,
+        .main-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .main-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .main-content::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .main-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.1em;
+            color: #2c3e50;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .sidebar-header h3 {
+            display: none;
+        }
+
+        .sidebar-menu {
+            padding: 10px 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            color: #495057;
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            background: #f8f9fa;
+            border-left-color: #667eea;
+        }
+
+        .menu-item.active {
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .menu-icon {
+            font-size: 1.3em;
+            margin-right: 12px;
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .menu-text {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .menu-text {
+            display: none;
+        }
+
+        .sidebar.collapsed .menu-item {
+            justify-content: center;
+            padding: 14px 0;
+            position: relative;
+        }
+
+        .sidebar.collapsed .menu-item:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 10px;
+            background: #2c3e50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            font-size: 0.9em;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 70px;
+                height: calc(100vh - 70px);
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+
+            .sidebar:not(.collapsed) {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            #collections-list,
+            #collections-history-list,
+            #annotations-history-list,
+            #viewed-annotations-list,
+            #annotation-files-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 25px;
+            background: #f5f7fa;
+        }
+
+        .tab-content {
+            display: none;
+            height: 100%;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: calc(100vh - 120px);
+            min-height: 600px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            background: white;
+        }
+
+        /* Pipeline页面样式 */
+        .pipeline-container {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            max-width: 100%;
+            margin: 0;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 进度显示区域 */
+        .progress-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .progress-step {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .progress-message {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        /* 日志显示区域 */
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .log-entry.success {
+            border-left-color: #38ef7d;
+        }
+
+        .log-entry.error {
+            border-left-color: #ff4757;
+        }
+
+        .log-entry.warning {
+            border-left-color: #ffa502;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 10px;
+        }
+
+        .status-message {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .status-info {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .video-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .video-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .video-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .video-card.selected {
+            border-color: #667eea;
+            background: #e7f0ff;
+        }
+
+        .video-card h4 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .video-card p {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .collection-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.3s ease;
+        }
+
+        /* 优化网格布局，让卡片更紧凑 */
+        #collections-list,
+        #collections-history-list,
+        #annotations-history-list,
+        #viewed-annotations-list,
+        #annotation-files-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 15px;
+        }
+
+        .collection-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .collection-card.processing {
+            border-color: #ffa502;
+            background: #fff8e1;
+        }
+
+        .collection-card.completed {
+            border-color: #38ef7d;
+            background: #e8f5e9;
+        }
+
+        .collection-card.failed {
+            border-color: #ff4757;
+            background: #ffebee;
+        }
+
+        .collection-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .collection-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .status-processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-partial {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .collection-progress {
+            margin-top: 10px;
+        }
+
+        .collection-progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .collection-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            max-height: 900px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .modal-close {
+            background: #f0f0f0;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.5em;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .modal-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <button class="header-toggle" onclick="toggleSidebar()" title="折叠/展开侧边栏">
+                ☰
+            </button>
+            <div>
+                <h1>🎯 PhysVLM-Intent 统一工作流</h1>
+                <p>数据采集 → 标注生成 → 人工检验标注</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 左侧边栏 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>功能菜单</h3>
+            </div>
+            <div class="sidebar-menu">
+                <div class="menu-item active" onclick="switchTab('collection')" data-tooltip="数据采集">
+                    <span class="menu-icon">📹</span>
+                    <span class="menu-text">数据采集</span>
+                </div>
+                <div class="menu-item" onclick="switchTab('pipeline')" data-tooltip="标注生成">
+                    <span class="menu-icon">🎬</span>
+                    <span class="menu-text">标注生成</span>
+                </div>
+                <div class="menu-item" onclick="switchTab('annotation')" data-tooltip="标注检验">
+                    <span class="menu-icon">✏️</span>
+                    <span class="menu-text">标注检验</span>
+                </div>
+                <div class="menu-item" onclick="switchTab('history')" data-tooltip="历史记录">
+                    <span class="menu-icon">📋</span>
+                    <span class="menu-text">历史记录</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="main-content">
+
+    <!-- 数据采集模块 -->
+    <div id="collection-tab" class="tab-content active">
+        <iframe class="iframe-container" src="/tools/data_collection/collection_tool.html"></iframe>
+    </div>
+
+    <!-- Pipeline标注生成模块 -->
+    <div id="pipeline-tab" class="tab-content">
+        <div class="pipeline-container">
+            <h2 class="section-title">🎬 标注生成Pipeline</h2>
+            
+            <!-- 历史记录显示 -->
+            <div style="margin-bottom: 30px;">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 采集任务列表</h3>
+                <div id="collections-list" style="display: grid; gap: 15px;"></div>
+            </div>
+            
+            <div class="form-group">
+                <label>选择采集任务（将处理该任务文件夹中的所有视频）</label>
+                <select id="collection-select" onchange="handleCollectionSelect()">
+                    <option value="">请选择采集任务</option>
+                </select>
+            </div>
+
+            <div id="collection-info" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                <h4 style="margin-bottom: 10px;">任务信息</h4>
+                <p><strong>任务名称：</strong><span id="collection-name"></span></p>
+                <p><strong>视频数量：</strong><span id="collection-video-count"></span></p>
+                <p><strong>已处理：</strong><span id="collection-processed-count"></span></p>
+                <p><strong>状态：</strong><span id="collection-status"></span></p>
+            </div>
+
+            <div class="form-group">
+                <button class="btn btn-primary" id="start-pipeline-btn" onclick="startPipeline()" disabled>
+                    🚀 开始批量生成标注
+                </button>
+            </div>
+
+            <!-- 进度显示区域 -->
+            <div id="progress-section" class="progress-section">
+                <div class="progress-info">
+                    <div class="progress-step" id="progress-step">准备中...</div>
+                    <div class="progress-message" id="progress-message">等待开始...</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%">0%</div>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                    <span id="current-video-info"></span>
+                </div>
+
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">处理日志</h3>
+                <div class="log-container" id="log-container"></div>
+
+                <div id="status-message" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 标注检验模块 -->
+    <div id="annotation-tab" class="tab-content">
+        <div class="pipeline-container">
+            <h2 class="section-title">✏️ 标注检验</h2>
+            
+            <!-- 任务选择 -->
+            <div style="margin-bottom: 30px;">
+                <div class="form-group">
+                    <label>选择采集任务</label>
+                    <select id="annotation-collection-select" onchange="handleAnnotationCollectionSelect()">
+                        <option value="">请选择采集任务</option>
+                    </select>
+                </div>
+                
+                <!-- 验证进度显示 -->
+                <div id="annotation-progress-info" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;">验证进度</h4>
+                    <p><strong>任务名称：</strong><span id="annotation-collection-name"></span></p>
+                    <p><strong>标注文件总数：</strong><span id="annotation-total-count"></span></p>
+                    <p><strong>已验证：</strong><span id="annotation-verified-count"></span></p>
+                    <div style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #6c757d;">
+                            <span>验证进度</span>
+                            <span id="annotation-progress-percent">0%</span>
+                        </div>
+                        <div class="collection-progress-bar">
+                            <div class="collection-progress-fill" id="annotation-progress-bar" style="width: 0%">
+                                0 / 0
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 标注文件列表 -->
+            <div id="annotation-files-list" style="display: none; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">标注文件列表</h3>
+                <div id="annotation-files-container" style="display: grid; gap: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录模块 -->
+    <div id="history-tab" class="tab-content">
+        <div class="pipeline-container">
+            <h2 class="section-title">
+                📋 操作日志
+                <span id="log-stats" style="font-size: 0.9em; color: #6c757d; font-weight: normal;">加载中...</span>
+            </h2>
+            
+            <div id="log-list" style="background: #1e1e1e; color: #d4d4d4; font-family: 'Courier New', 'Consolas', monospace; padding: 20px; border-radius: 8px; max-height: 70vh; overflow-y: auto; font-size: 0.9em; line-height: 1.6;">
+                <div style="color: #858585;">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+        </div> <!-- 关闭 main-content -->
+    </div> <!-- 关闭 main-container -->
+
+    <!-- 标注工具模态框 -->
+    <div id="annotation-modal" class="modal-overlay" onclick="closeAnnotationModal(event)">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>✏️ 标注检验工具</h3>
+                <button class="modal-close" onclick="closeAnnotationModal()" title="关闭">×</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="annotation-iframe" class="modal-iframe"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentTaskId = null;
+        let selectedCollectionId = null;
+        let refreshInterval = null;
+        let currentAnnotationCollection = null;  // 当前选择的标注任务数据
+        let currentAnnotationFileIndex = -1;     // 当前打开的标注文件索引
+
+        // 初始化Socket连接
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('WebSocket连接成功');
+            });
+
+            socket.on('pipeline_progress', (data) => {
+                if (data.task_id === currentTaskId) {
+                    updateProgress(data);
+                }
+                // 实时刷新采集任务列表
+                loadCollections();
+            });
+
+            socket.on('pipeline_complete', (data) => {
+                if (data.task_id === currentTaskId) {
+                    handlePipelineComplete(data);
+                }
+                // 刷新采集任务列表
+                loadCollections();
+            });
+
+            socket.on('pipeline_error', (data) => {
+                if (data.task_id === currentTaskId) {
+                    handlePipelineError(data);
+                }
+                // 刷新采集任务列表
+                loadCollections();
+            });
+        }
+
+        // 切换侧边栏折叠状态
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            // 保存状态到localStorage
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+
+        // 页面加载时恢复侧边栏状态
+        window.addEventListener('DOMContentLoaded', () => {
+            const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (sidebarCollapsed) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        });
+
+        // 切换标签页
+        function switchTab(tabName) {
+            // 更新菜单项状态
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 找到对应的菜单项并激活
+            const menuItems = document.querySelectorAll('.menu-item');
+            const tabIndexMap = {
+                'collection': 0,
+                'pipeline': 1,
+                'annotation': 2,
+                'history': 3
+            };
+            
+            if (tabIndexMap.hasOwnProperty(tabName) && menuItems[tabIndexMap[tabName]]) {
+                menuItems[tabIndexMap[tabName]].classList.add('active');
+            }
+            
+            // 显示对应的内容
+            const tabElement = document.getElementById(`${tabName}-tab`);
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+
+            // 如果是Pipeline标签页，初始化Socket和加载数据
+            if (tabName === 'pipeline') {
+                if (!socket) {
+                    initSocket();
+                }
+                loadCollections();
+                // 开始定时刷新
+                startAutoRefresh();
+            } else if (tabName === 'history') {
+                // 加载历史记录
+                loadHistoryData();
+                startAutoRefresh();
+            } else if (tabName === 'annotation') {
+                // 加载标注任务列表
+                loadAnnotationCollections();
+            } else {
+                // 停止定时刷新
+                stopAutoRefresh();
+            }
+        }
+
+        // 开始自动刷新
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(() => {
+                const activeTab = document.querySelector('.tab-content.active').id;
+                if (activeTab === 'pipeline-tab') {
+                    loadCollections();
+                } else if (activeTab === 'history-tab') {
+                    loadHistoryData();
+                }
+            }, 2000); // 每2秒刷新一次
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // 加载采集任务列表（带历史记录）
+        async function loadCollections() {
+            try {
+                const response = await fetch('/api/history/collections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderCollectionsList(data.collections);
+                    updateCollectionSelect(data.collections);
+                }
+            } catch (error) {
+                console.error('加载采集任务列表失败:', error);
+            }
+        }
+
+        // 渲染采集任务列表
+        function renderCollectionsList(collections) {
+            const container = document.getElementById('collections-list');
+            container.innerHTML = '';
+            
+            if (collections.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6c757d;">暂无采集任务</p>';
+                return;
+            }
+            
+            collections.forEach(col => {
+                const progress = col.video_count > 0 
+                    ? Math.round((col.processed_count / col.video_count) * 100)
+                    : 0;
+                
+                const statusClass = `status-${col.status}`;
+                const cardClass = `collection-card ${col.status}`;
+                
+                const card = document.createElement('div');
+                card.className = cardClass;
+                card.innerHTML = `
+                    <div class="collection-header">
+                        <div class="collection-title">${col.name}</div>
+                        <span class="collection-status ${statusClass}">${getStatusText(col.status)}</span>
+                    </div>
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 10px;">
+                        视频数量: ${col.video_count} | 已处理: ${col.processed_count} | 最后更新: ${col.last_updated || '从未'}
+                    </div>
+                    <div class="collection-progress">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #6c757d;">
+                            <span>处理进度</span>
+                            <span>${progress}%</span>
+                        </div>
+                        <div class="collection-progress-bar">
+                            <div class="collection-progress-fill" style="width: ${progress}%">
+                                ${col.processed_count} / ${col.video_count}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待处理',
+                'processing': '处理中',
+                'completed': '已完成',
+                'partial': '部分完成',
+                'failed': '失败'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 更新采集任务选择下拉框
+        function updateCollectionSelect(collections) {
+            const select = document.getElementById('collection-select');
+            const currentValue = select.value;
+            
+            select.innerHTML = '<option value="">请选择采集任务</option>';
+            collections.forEach(col => {
+                const option = document.createElement('option');
+                option.value = col.id;
+                option.textContent = `${col.name} (${col.processed_count}/${col.video_count})`;
+                select.appendChild(option);
+            });
+            
+            select.value = currentValue;
+            if (currentValue) {
+                handleCollectionSelect();
+            }
+        }
+
+        // 处理采集任务选择
+        function handleCollectionSelect() {
+            const collectionId = document.getElementById('collection-select').value;
+            selectedCollectionId = collectionId ? parseInt(collectionId) : null;
+            
+            if (selectedCollectionId) {
+                // 加载任务详情
+                loadCollectionDetails(selectedCollectionId);
+                document.getElementById('collection-info').style.display = 'block';
+                document.getElementById('start-pipeline-btn').disabled = false;
+            } else {
+                document.getElementById('collection-info').style.display = 'none';
+                document.getElementById('start-pipeline-btn').disabled = true;
+            }
+        }
+
+        // 加载采集任务详情
+        async function loadCollectionDetails(collectionId) {
+            try {
+                const response = await fetch('/api/history/collections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const collection = data.collections.find(c => c.id === collectionId);
+                    if (collection) {
+                        document.getElementById('collection-name').textContent = collection.name;
+                        document.getElementById('collection-video-count').textContent = collection.video_count;
+                        document.getElementById('collection-processed-count').textContent = collection.processed_count;
+                        document.getElementById('collection-status').textContent = getStatusText(collection.status);
+                    }
+                }
+            } catch (error) {
+                console.error('加载任务详情失败:', error);
+            }
+        }
+
+        // 处理视频来源切换（已移除，现在只支持采集任务）
+        function handleVideoSourceChange() {
+            // 已移除，保留函数避免错误
+        }
+
+        // 加载采集任务中的视频列表（已移除，现在以任务为单位处理）
+        async function loadCollectionVideos() {
+            // 已移除，保留函数避免错误
+        }
+
+        // 渲染视频列表（已移除）
+        function renderVideoList(videos) {
+            // 已移除
+        }
+
+        // 选择视频（已移除）
+        function selectVideo(path, cardElement) {
+            // 已移除
+        }
+
+        // 处理文件上传（已移除）
+        document.getElementById('video-upload')?.addEventListener('change', function(e) {
+            // 已移除
+        });
+
+        // 更新开始按钮状态
+        function updateStartButton() {
+            const btn = document.getElementById('start-pipeline-btn');
+            btn.disabled = !selectedCollectionId;
+        }
+
+        // 开始Pipeline处理
+        async function startPipeline() {
+            if (!selectedCollectionId) {
+                showStatus('请先选择采集任务', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/pipeline/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        collection_id: selectedCollectionId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTaskId = data.task_id;
+                    document.getElementById('progress-section').classList.add('active');
+                    document.getElementById('start-pipeline-btn').disabled = true;
+                    document.getElementById('log-container').innerHTML = '';
+                    lastLogCount = 0; // 重置日志计数
+                    addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个视频`, 'info');
+                    
+                    // 开始轮询状态
+                    pollPipelineStatus(data.task_id);
+                } else {
+                    showStatus('启动Pipeline失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('启动Pipeline失败:', error);
+                showStatus('启动Pipeline失败: ' + error.message, 'error');
+            }
+        }
+
+        // 轮询Pipeline状态
+        let lastLogCount = 0;
+        async function pollPipelineStatus(taskId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/pipeline/status/${taskId}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const task = data.task;
+                        updateProgress({
+                            progress: task.progress,
+                            current_step: task.current_step,
+                            message: task.message
+                        });
+
+                        // 更新当前视频信息
+                        if (task.current_video) {
+                            document.getElementById('current-video-info').textContent = 
+                                `正在处理: ${task.current_video} (${task.current_video_index}/${task.total_videos})`;
+                        }
+
+                        // 显示新日志（只显示新增的日志）
+                        if (task.logs && task.logs.length > lastLogCount) {
+                            const logContainer = document.getElementById('log-container');
+                            const newLogs = task.logs.slice(lastLogCount);
+                            newLogs.forEach(log => {
+                                addLog(log.step, log.message, 'info');
+                            });
+                            lastLogCount = task.logs.length;
+                        }
+
+                        if (task.status === 'completed') {
+                            clearInterval(interval);
+                            handlePipelineComplete({ 
+                                collection_id: task.collection_id,
+                                processed_count: task.results?.filter(r => r.status === 'completed').length || 0,
+                                failed_count: task.results?.filter(r => r.status === 'failed').length || 0,
+                                total_videos: task.total_videos
+                            });
+                        } else if (task.status === 'failed') {
+                            clearInterval(interval);
+                            handlePipelineError({ error: task.error });
+                        }
+                    }
+                } catch (error) {
+                    console.error('获取Pipeline状态失败:', error);
+                }
+            }, 1000);
+        }
+
+        // 更新进度显示
+        function updateProgress(data) {
+            document.getElementById('progress-bar').style.width = data.progress + '%';
+            document.getElementById('progress-bar').textContent = data.progress + '%';
+            document.getElementById('progress-step').textContent = data.current_step || '处理中...';
+            document.getElementById('progress-message').textContent = data.message || '';
+        }
+
+        // 添加日志
+        function addLog(step, message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="log-time">[${time}]</span><strong>${step}:</strong> ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 处理Pipeline完成
+        function handlePipelineComplete(data) {
+            addLog('系统', 'Pipeline批量处理完成！', 'success');
+            showStatus(`✅ Pipeline处理完成！成功: ${data.processed_count}, 失败: ${data.failed_count}`, 'success');
+            document.getElementById('start-pipeline-btn').disabled = false;
+            
+            // 刷新采集任务列表
+            loadCollections();
+            
+            // 3秒后提示跳转到标注页面
+            setTimeout(() => {
+                if (confirm('Pipeline处理完成！是否前往标注检验页面？')) {
+                    switchTab('annotation');
+                }
+            }, 3000);
+        }
+
+        // 处理Pipeline错误
+        function handlePipelineError(data) {
+            addLog('错误', data.error || '处理失败', 'error');
+            showStatus('❌ Pipeline处理失败: ' + (data.error || '未知错误'), 'error');
+            document.getElementById('start-pipeline-btn').disabled = false;
+            
+            // 刷新采集任务列表
+            loadCollections();
+        }
+
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            initSocket();
+            
+            // ESC键关闭模态框
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    const modal = document.getElementById('annotation-modal');
+                    if (modal && modal.classList.contains('active')) {
+                        closeAnnotationModal();
+                    }
+                }
+            });
+            
+            // 监听iframe消息（标注验证完成）
+            window.addEventListener('message', async (event) => {
+                if (event.data && event.data.type === 'annotation_verified') {
+                    const resultFile = event.data.result_file;
+                    
+                    // 刷新标注任务列表
+                    await loadAnnotationCollections();
+                    
+                    // 更新当前任务数据
+                    const select = document.getElementById('annotation-collection-select');
+                    if (select.value && currentAnnotationCollection) {
+                        // 重新加载任务数据
+                        const response = await fetch('/api/annotation/collections');
+                        const data = await response.json();
+                        if (data.success) {
+                            const collection = data.collections.find(
+                                c => c.id == select.value
+                            );
+                            if (collection) {
+                                currentAnnotationCollection = collection;
+                                displayAnnotationCollection(collection);
+                                
+                                // 自动打开下一个未验证的文件
+                                openNextUnverifiedAnnotation();
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        // 加载历史记录数据
+        async function loadHistoryData() {
+            await loadOperationLogs();
+        }
+
+        let allLogs = [];
+
+        // 操作类型颜色映射
+        const operationColors = {
+            'create_collection': '#4ec9b0',      // 青色
+            'complete_collection': '#569cd6',   // 蓝色
+            'generate_annotation': '#9cdcfe',   // 浅蓝色
+            'pipeline_batch_complete': '#c586c0', // 紫色
+            'view_annotation': '#ce9178',       // 橙色
+            'verify_annotation': '#4fc1ff',    // 亮蓝色
+            'save_annotation': '#6a9955'        // 绿色
+        };
+
+        // 加载操作日志
+        async function loadOperationLogs() {
+            try {
+                const response = await fetch('/api/history/operation_logs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allLogs = data.logs;
+                    document.getElementById('log-stats').textContent = `共 ${data.total} 条记录`;
+                    renderLogs();
+                }
+            } catch (error) {
+                console.error('加载操作日志失败:', error);
+                document.getElementById('log-list').innerHTML = 
+                    '<div style="color: #f48771;">❌ 加载失败，请刷新页面重试</div>';
+            }
+        }
+
+        // 渲染日志列表（终端风格）
+        function renderLogs() {
+            const container = document.getElementById('log-list');
+            
+            if (allLogs.length === 0) {
+                container.innerHTML = '<div style="color: #858585;">暂无操作日志</div>';
+                return;
+            }
+            
+            container.innerHTML = allLogs.map(log => {
+                const color = operationColors[log.operation_type] || '#d4d4d4';
+                const details = log.details || {};
+                
+                // 构建详情信息
+                let detailText = '';
+                if (Object.keys(details).length > 0) {
+                    const detailItems = [];
+                    if (details.collection_id) detailItems.push(`任务ID: ${details.collection_id}`);
+                    if (details.video_name) detailItems.push(`视频: ${details.video_name}`);
+                    if (details.processed_count !== undefined) detailItems.push(`成功: ${details.processed_count}`);
+                    if (details.failed_count !== undefined) detailItems.push(`失败: ${details.failed_count}`);
+                    if (details.total_videos) detailItems.push(`总计: ${details.total_videos}`);
+                    if (details.saved_file) detailItems.push(`文件: ${details.saved_file.split('/').pop()}`);
+                    
+                    if (detailItems.length > 0) {
+                        detailText = ` <span style="color: #858585;">(${detailItems.join(', ')})</span>`;
+                    }
+                }
+                
+                return `<div style="margin-bottom: 4px;">
+                    <span style="color: #858585;">[${log.timestamp}]</span> 
+                    <span style="color: ${color}; font-weight: bold;">${log.description}</span>${detailText}
+                </div>`;
+            }).join('');
+            
+            // 自动滚动到底部
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 打开标注工具模态框
+        function openAnnotationModal(resultFile) {
+            const modal = document.getElementById('annotation-modal');
+            const iframe = document.getElementById('annotation-iframe');
+            if (modal && iframe) {
+                iframe.src = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
+                modal.classList.add('active');
+                // 阻止body滚动
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // 关闭标注工具模态框
+        function closeAnnotationModal(event) {
+            // 如果点击的是关闭按钮或遮罩层，则关闭
+            // 如果没有参数（ESC键触发），也关闭
+            if (!event || event.target.id === 'annotation-modal' || event.target.classList.contains('modal-close')) {
+                const modal = document.getElementById('annotation-modal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    // 恢复body滚动
+                    document.body.style.overflow = '';
+                }
+            }
+        }
+
+        // 打开标注文件（从历史记录页面）
+        function openAnnotation(resultFile) {
+            // 切换到标注检验标签页
+            switchTab('annotation');
+            // 打开模态框
+            setTimeout(() => {
+                openAnnotationModal(resultFile);
+            }, 100);
+        }
+
+        // 加载标注任务列表
+        async function loadAnnotationCollections() {
+            try {
+                const response = await fetch('/api/annotation/collections');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateAnnotationCollectionSelect(data.collections);
+                }
+            } catch (error) {
+                console.error('加载标注任务列表失败:', error);
+            }
+        }
+
+        // 更新标注任务选择下拉框
+        function updateAnnotationCollectionSelect(collections) {
+            const select = document.getElementById('annotation-collection-select');
+            select.innerHTML = '<option value="">请选择采集任务</option>';
+            
+            collections.forEach(col => {
+                if (col.total_annotations > 0) {
+                    const option = document.createElement('option');
+                    option.value = col.id;
+                    option.textContent = `${col.name} (${col.verified_count}/${col.total_annotations} 已验证)`;
+                    option.dataset.collection = JSON.stringify(col);
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        // 处理标注任务选择
+        function handleAnnotationCollectionSelect() {
+            const select = document.getElementById('annotation-collection-select');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value && selectedOption.dataset.collection) {
+                const collection = JSON.parse(selectedOption.dataset.collection);
+                displayAnnotationCollection(collection);
+                currentAnnotationFileIndex = -1; // 重置当前文件索引
+            } else {
+                document.getElementById('annotation-progress-info').style.display = 'none';
+                document.getElementById('annotation-files-list').style.display = 'none';
+                currentAnnotationCollection = null;
+                currentAnnotationFileIndex = -1;
+            }
+        }
+
+        // 显示标注任务详情
+        function displayAnnotationCollection(collection) {
+            // 保存当前任务数据
+            currentAnnotationCollection = collection;
+            
+            // 显示进度信息
+            document.getElementById('annotation-collection-name').textContent = collection.name;
+            document.getElementById('annotation-total-count').textContent = collection.total_annotations;
+            document.getElementById('annotation-verified-count').textContent = collection.verified_count;
+            
+            const progress = collection.total_annotations > 0 
+                ? Math.round((collection.verified_count / collection.total_annotations) * 100)
+                : 0;
+            document.getElementById('annotation-progress-percent').textContent = `${progress}%`;
+            document.getElementById('annotation-progress-bar').style.width = `${progress}%`;
+            document.getElementById('annotation-progress-bar').textContent = 
+                `${collection.verified_count} / ${collection.total_annotations}`;
+            
+            document.getElementById('annotation-progress-info').style.display = 'block';
+            
+            // 显示标注文件列表
+            renderAnnotationFiles(collection.annotations);
+            document.getElementById('annotation-files-list').style.display = 'block';
+        }
+
+        // 渲染标注文件列表
+        function renderAnnotationFiles(annotations) {
+            const container = document.getElementById('annotation-files-container');
+            container.innerHTML = '';
+            
+            if (annotations.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6c757d;">该任务暂无标注文件</p>';
+                return;
+            }
+            
+            annotations.forEach(ann => {
+                const card = document.createElement('div');
+                card.className = `collection-card ${ann.verified ? 'completed' : ''}`;
+                card.innerHTML = `
+                    <div class="collection-header">
+                        <div class="collection-title">${ann.video_name || '未知视频'}</div>
+                        <span class="collection-status ${ann.verified ? 'status-completed' : 'status-pending'}">
+                            ${ann.verified ? '✓ 已验证' : '待验证'}
+                        </span>
+                    </div>
+                    <div style="color: #6c757d; font-size: 0.9em; margin-bottom: 10px;">
+                        创建时间: ${ann.created_at || '未知'} | 
+                        查看次数: ${ann.view_count || 0} | 
+                        ${ann.verified_at ? '验证时间: ' + ann.verified_at : ''}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="openAnnotationFile('${ann.result_file.replace(/'/g, "\\'")}', ${ann.verified})">
+                            ${ann.verified ? '重新查看' : '开始验证'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 打开标注文件
+        function openAnnotationFile(resultFile, isVerified) {
+            // 找到当前文件在列表中的索引
+            if (currentAnnotationCollection && currentAnnotationCollection.annotations) {
+                const index = currentAnnotationCollection.annotations.findIndex(
+                    ann => ann.result_file === resultFile
+                );
+                currentAnnotationFileIndex = index;
+            }
+            
+            // 打开模态框
+            openAnnotationModal(resultFile);
+        }
+
+        // 打开下一个未验证的标注文件
+        function openNextUnverifiedAnnotation() {
+            if (!currentAnnotationCollection || !currentAnnotationCollection.annotations) {
+                return;
+            }
+            
+            // 找到下一个未验证的文件
+            const unverifiedFiles = currentAnnotationCollection.annotations.filter(
+                ann => !ann.verified && ann.file_exists
+            );
+            
+            if (unverifiedFiles.length === 0) {
+                showStatus('🎉 恭喜！所有标注文件都已验证完成！', 'success');
+                // 刷新任务列表以更新进度
+                loadAnnotationCollections();
+                return;
+            }
+            
+            // 如果当前有打开的文件，找到它的下一个未验证文件
+            let nextFile = null;
+            if (currentAnnotationFileIndex >= 0) {
+                // 从当前文件之后开始查找
+                for (let i = currentAnnotationFileIndex + 1; i < currentAnnotationCollection.annotations.length; i++) {
+                    const ann = currentAnnotationCollection.annotations[i];
+                    if (!ann.verified && ann.file_exists) {
+                        nextFile = ann;
+                        break;
+                    }
+                }
+                // 如果后面没有，从头开始查找
+                if (!nextFile) {
+                    for (let i = 0; i < currentAnnotationFileIndex; i++) {
+                        const ann = currentAnnotationCollection.annotations[i];
+                        if (!ann.verified && ann.file_exists) {
+                            nextFile = ann;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // 如果没有当前文件，直接取第一个未验证的
+                nextFile = unverifiedFiles[0];
+            }
+            
+            if (nextFile) {
+                // 延迟一下，让用户看到验证成功的消息
+                setTimeout(() => {
+                    openAnnotationFile(nextFile.result_file, false);
+                    showStatus(`已自动打开下一个未验证文件: ${nextFile.video_name}`, 'info');
+                }, 500);
+            } else {
+                showStatus('🎉 恭喜！所有标注文件都已验证完成！', 'success');
+            }
+        }
+
+        // 标记为已验证（从标注工具页面调用）
+        async function markAnnotationVerified(resultFile) {
+            try {
+                const response = await fetch('/api/annotation/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        result_file: resultFile
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // 刷新标注任务列表
+                    loadAnnotationCollections();
+                    showStatus('标注已标记为已验证', 'success');
+                } else {
+                    showStatus('标记验证失败: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('标记验证失败:', error);
+                showStatus('标记验证失败: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+

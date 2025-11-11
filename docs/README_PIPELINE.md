@@ -161,8 +161,8 @@ from pipeline.llm_client import LLMClient
 # 语音识别
 success, words_list = audio_to_words_with_timestamps("audio.mp3")
 
-# 视频处理
-result_data = split_video_by_words("video.mp4", words_list)
+# 视频处理（返回result_data和最后一帧路径）
+result_data, last_frame_path = split_video_by_words("video.mp4", words_list)
 
 # LLM分析
 llm_client = LLMClient(api_key="...", base_url="...")

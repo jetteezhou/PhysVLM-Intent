@@ -13,6 +13,7 @@ openai>=1.0.0
 # Web服务器（标注工具）
 flask>=2.3.0
 flask-cors>=4.0.0
+flask-socketio>=5.3.0
 
 # 基础工具
 numpy>=1.24.0

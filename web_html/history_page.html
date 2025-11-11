@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .log-container {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 1.6em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-stats {
+            font-size: 0.9em;
+            color: #6c757d;
+            font-weight: normal;
+        }
+
+        .log-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: #6c757d;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        .log-list {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .log-entry {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .log-entry:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateX(5px);
+        }
+
+        .log-entry.create_collection {
+            border-left-color: #38ef7d;
+        }
+
+        .log-entry.complete_collection {
+            border-left-color: #11998e;
+        }
+
+        .log-entry.generate_annotation {
+            border-left-color: #667eea;
+        }
+
+        .log-entry.pipeline_batch_complete {
+            border-left-color: #764ba2;
+        }
+
+        .log-entry.view_annotation {
+            border-left-color: #f093fb;
+        }
+
+        .log-entry.verify_annotation {
+            border-left-color: #4facfe;
+        }
+
+        .log-entry.save_annotation {
+            border-left-color: #43e97b;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .log-time {
+            font-size: 0.85em;
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .log-type.create_collection {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .log-type.complete_collection {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .log-type.generate_annotation {
+            background: #d6e9ff;
+            color: #004085;
+        }
+
+        .log-type.pipeline_batch_complete {
+            background: #e2d9f3;
+            color: #4a148c;
+        }
+
+        .log-type.view_annotation {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .log-type.verify_annotation {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .log-type.save_annotation {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .log-description {
+            font-size: 1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .log-details {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .log-detail-item {
+            margin: 4px 0;
+        }
+
+        .log-detail-key {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-text {
+            font-size: 1.2em;
+        }
+
+        /* 滚动条样式 */
+        .log-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .log-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .log-list::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="log-container">
+        <h2 class="section-title">
+            📋 操作日志
+            <span class="log-stats" id="log-stats">加载中...</span>
+        </h2>
+        
+        <div class="log-filters">
+            <button class="filter-btn active" data-filter="all" onclick="filterLogs('all')">全部</button>
+            <button class="filter-btn" data-filter="create_collection" onclick="filterLogs('create_collection')">创建采集任务</button>
+            <button class="filter-btn" data-filter="complete_collection" onclick="filterLogs('complete_collection')">完成采集任务</button>
+            <button class="filter-btn" data-filter="generate_annotation" onclick="filterLogs('generate_annotation')">生成标注</button>
+            <button class="filter-btn" data-filter="pipeline_batch_complete" onclick="filterLogs('pipeline_batch_complete')">Pipeline批量处理</button>
+            <button class="filter-btn" data-filter="view_annotation" onclick="filterLogs('view_annotation')">查看标注</button>
+            <button class="filter-btn" data-filter="verify_annotation" onclick="filterLogs('verify_annotation')">验证标注</button>
+            <button class="filter-btn" data-filter="save_annotation" onclick="filterLogs('save_annotation')">保存标注</button>
+        </div>
+
+        <div class="log-list" id="log-list">
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <div class="empty-state-text">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval = null;
+        let allLogs = [];
+        let currentFilter = 'all';
+
+        // 操作类型映射
+        const operationTypeMap = {
+            'create_collection': '创建采集任务',
+            'complete_collection': '完成采集任务',
+            'generate_annotation': '生成标注',
+            'pipeline_batch_complete': 'Pipeline批量处理',
+            'view_annotation': '查看标注',
+            'verify_annotation': '验证标注',
+            'save_annotation': '保存标注'
+        };
+
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            loadOperationLogs();
+            startAutoRefresh();
+        });
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+
+        // 开始自动刷新
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            refreshInterval = setInterval(() => {
+                loadOperationLogs();
+            }, 3000); // 每3秒刷新一次
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // 加载操作日志
+        async function loadOperationLogs() {
+            try {
+                const response = await fetch('/api/history/operation_logs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allLogs = data.logs;
+                    updateLogStats(data.total);
+                    renderLogs();
+                }
+            } catch (error) {
+                console.error('加载操作日志失败:', error);
+                document.getElementById('log-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-text">加载失败，请刷新页面重试</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 更新日志统计
+        function updateLogStats(total) {
+            const filteredCount = currentFilter === 'all' ? allLogs.length : 
+                allLogs.filter(log => log.operation_type === currentFilter).length;
+            document.getElementById('log-stats').textContent = 
+                `共 ${total} 条记录，当前显示 ${filteredCount} 条`;
+        }
+
+        // 过滤日志
+        function filterLogs(filter) {
+            currentFilter = filter;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-filter') === filter) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            renderLogs();
+        }
+
+        // 渲染日志列表
+        function renderLogs() {
+            const container = document.getElementById('log-list');
+            
+            // 过滤日志
+            const filteredLogs = currentFilter === 'all' 
+                ? allLogs 
+                : allLogs.filter(log => log.operation_type === currentFilter);
+            
+            if (filteredLogs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div class="empty-state-text">暂无操作日志</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredLogs.map(log => {
+                const details = log.details || {};
+                const detailsHtml = Object.keys(details).length > 0 
+                    ? `<div class="log-details">
+                        ${Object.entries(details).map(([key, value]) => 
+                            `<div class="log-detail-item">
+                                <span class="log-detail-key">${getDetailKeyLabel(key)}:</span> ${formatDetailValue(value)}
+                            </div>`
+                        ).join('')}
+                    </div>`
+                    : '';
+                
+                return `
+                    <div class="log-entry ${log.operation_type}">
+                        <div class="log-header">
+                            <span class="log-time">${log.timestamp}</span>
+                            <span class="log-type ${log.operation_type}">${operationTypeMap[log.operation_type] || log.operation_type}</span>
+                        </div>
+                        <div class="log-description">${log.description}</div>
+                        ${detailsHtml}
+                    </div>
+                `;
+            }).join('');
+            
+            updateLogStats(allLogs.length);
+        }
+
+        // 获取详情键的标签
+        function getDetailKeyLabel(key) {
+            const labelMap = {
+                'collection_id': '采集任务ID',
+                'template_name': '模板名称',
+                'scene_name': '场景名称',
+                'folder_name': '文件夹名称',
+                'video_count': '视频数量',
+                'video_path': '视频路径',
+                'video_name': '视频名称',
+                'result_file': '结果文件',
+                'processed_count': '成功处理',
+                'failed_count': '失败数量',
+                'total_videos': '总视频数',
+                'collection_name': '采集任务名称',
+                'saved_file': '保存文件',
+                'backup_file': '备份文件'
+            };
+            return labelMap[key] || key;
+        }
+
+        // 格式化详情值
+        function formatDetailValue(value) {
+            if (typeof value === 'object' && value !== null) {
+                return JSON.stringify(value);
+            }
+            return value;
+        }
+    </script>
+</body>
+</html>

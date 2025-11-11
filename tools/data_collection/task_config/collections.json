@@ -11,12 +11,12 @@
     "current_count": 1,
     "videos": [
       {
-        "filename": "face_tracking_v1.2_on_A800.mp4",
-        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/face_tracking_v1.2_on_A800.mp4",
-        "relative_path": "face_tracking_v1.2_on_A800.mp4",
-        "size": 7545739,
-        "size_mb": 7.2,
-        "modified_time": "2025-11-11 17:56:27"
+        "filename": "IMG_3492.MOV",
+        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",
+        "relative_path": "IMG_3492.MOV",
+        "size": 8421943,
+        "size_mb": 8.03,
+        "modified_time": "2025-11-11 21:04:32"
       }
     ],
     "created_at": "2025-11-11 17:56:20",
