@@ -455,7 +455,7 @@
                         ${ann.verified_at ? '验证时间: ' + ann.verified_at : ''}
                     </div>
                     <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="openAnnotationFile('${ann.result_file.replace(/'/g, "\\'")}', ${ann.verified})">
+                        <button class="btn btn-primary" onclick="openAnnotationFile('${ann.result_file.replace(/'/g, "\\'")}', '${(ann.video_path || '').replace(/'/g, "\\'")}', ${ann.verified})">
                             ${ann.verified ? '重新查看' : '开始验证'}
                         </button>
                     </div>
@@ -465,7 +465,7 @@
         }
 
         // 打开标注文件
-        function openAnnotationFile(resultFile, isVerified) {
+        function openAnnotationFile(resultFile, videoPath, isVerified) {
             if (currentAnnotationCollection && currentAnnotationCollection.annotations) {
                 const index = currentAnnotationCollection.annotations.findIndex(
                     ann => ann.result_file === resultFile
@@ -473,20 +473,52 @@
                 currentAnnotationFileIndex = index;
             }
             
+            // 构建URL，包含文件路径和视频路径参数
+            let url = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
+            if (videoPath) {
+                url += `&video_path=${encodeURIComponent(videoPath)}`;
+            }
+            
             // 通知父窗口打开标注工具
             if (window.parent && window.parent.openAnnotationModal) {
-                window.parent.openAnnotationModal(resultFile);
+                window.parent.openAnnotationModal(resultFile, videoPath);
             } else {
                 // 如果不在iframe中，直接打开
-                window.open(`/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`, '_blank');
+                window.open(url, '_blank');
             }
         }
 
-        // 监听来自父窗口的消息（标注验证完成）
+        // 监听来自父窗口的消息（标注验证完成或保存，以及刷新请求）
         window.addEventListener('message', async (event) => {
-            if (event.data && event.data.type === 'annotation_verified') {
+            // 处理刷新请求
+            if (event.data && event.data.type === 'refresh_annotation_list') {
                 const resultFile = event.data.result_file;
                 
+                // 刷新标注任务列表
+                await loadAnnotationCollections();
+                
+                const select = document.getElementById('annotation-collection-select');
+                if (select.value && currentAnnotationCollection) {
+                    const response = await fetch('/api/annotation/collections');
+                    const data = await response.json();
+                    if (data.success) {
+                        const collection = data.collections.find(
+                            c => c.id == select.value
+                        );
+                        if (collection) {
+                            currentAnnotationCollection = collection;
+                            displayAnnotationCollection(collection);
+                        }
+                    }
+                }
+                return;
+            }
+            
+            // 处理验证完成或保存消息（从标注工具直接发送）
+            if (event.data && (event.data.type === 'annotation_verified' || event.data.type === 'annotation_saved')) {
+                const resultFile = event.data.result_file;
+                
+                // 刷新标注任务列表
                 await loadAnnotationCollections();
                 
                 const select = document.getElementById('annotation-collection-select');
@@ -501,7 +533,10 @@
                             currentAnnotationCollection = collection;
                             displayAnnotationCollection(collection);
                             
-                            openNextUnverifiedAnnotation();
+                            // 如果是验证完成，自动打开下一个未验证的标注
+                            if (event.data.type === 'annotation_verified') {
+                                openNextUnverifiedAnnotation();
+                            }
                         }
                     }
                 }

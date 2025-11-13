@@ -71,14 +71,7 @@ def check_data_file():
         print("请先运行 asr_test.py 生成数据文件")
         return False
 
-def create_backup_dir():
-    """创建备份目录"""
-    backup_dir = os.path.join(PROJECT_ROOT, "annotation_backups")
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
-        print(f"📁 创建备份目录: {backup_dir}")
-    else:
-        print(f"📁 备份目录已存在: {backup_dir}")
+# 不再需要创建备份目录
 
 def start_server():
     """启动标注服务器"""
@@ -118,9 +111,6 @@ def main():
         if response != 'y':
             print("👋 已取消启动")
             return
-    
-    # 创建备份目录
-    create_backup_dir()
     
     # 启动服务器
     start_server()

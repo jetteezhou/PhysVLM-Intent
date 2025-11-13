@@ -80,7 +80,7 @@ def create_template():
     """创建任务模板"""
     try:
         data = request.get_json()
-        required_fields = ['name', 'scene_type', 'target_count', 'description']
+        required_fields = ['name', 'target_count']
         
         for field in required_fields:
             if field not in data:
@@ -98,9 +98,8 @@ def create_template():
         new_template = {
             'id': template_id,
             'name': data['name'],
-            'scene_type': data['scene_type'],
             'target_count': int(data['target_count']),
-            'description': data['description'],
+            'description': data.get('description', ''),
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -138,8 +137,6 @@ def update_template(template_id):
         # 更新字段
         if 'name' in data:
             templates[template_index]['name'] = data['name']
-        if 'scene_type' in data:
-            templates[template_index]['scene_type'] = data['scene_type']
         if 'target_count' in data:
             templates[template_index]['target_count'] = int(data['target_count'])
         if 'description' in data:

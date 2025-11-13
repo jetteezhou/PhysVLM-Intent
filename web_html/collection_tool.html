@@ -912,12 +912,6 @@
                         <input type="text" id="template-name" placeholder="例如：抓取红色物体">
                     </div>
                     <div class="form-group">
-                        <label>场景类型 *</label>
-                        <select id="template-scene-type">
-                            <option value="">请选择场景类型</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label>目标数量 *</label>
                         <input type="number" id="template-target-count" min="1" placeholder="例如：10">
                     </div>
@@ -937,7 +931,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>指令模板</th>
-                                <th>场景类型</th>
                                 <th>目标数量</th>
                                 <th>任务说明</th>
                                 <th>创建时间</th>
@@ -1106,11 +1099,10 @@
             try {
                 const response = await fetch('/api/admin/scenes');
                 const data = await response.json();
-                if (data.success) {
+                    if (data.success) {
                     scenes = data.scenes;
                     renderScenes();
                     updateSceneSelects();
-                    updateTemplateSelects(); // 同时更新指令模板表单中的场景类型下拉框
                 }
             } catch (error) {
                 showStatus('加载场景类型失败: ' + error.message, 'error');
@@ -1126,7 +1118,6 @@
                 tr.innerHTML = `
                     <td>${template.id}</td>
                     <td>${template.name}</td>
-                    <td>${template.scene_type}</td>
                     <td>${template.target_count}</td>
                     <td>${template.description || '-'}</td>
                     <td>${template.created_at}</td>
@@ -1163,8 +1154,6 @@
             document.getElementById('template-form').style.display = 'block';
             editingTemplateId = null;
             clearTemplateForm();
-            // 显示表单时刷新场景类型下拉框
-            updateTemplateSelects();
         }
 
         function cancelTemplateForm() {
@@ -1175,7 +1164,6 @@
 
         function clearTemplateForm() {
             document.getElementById('template-name').value = '';
-            document.getElementById('template-scene-type').value = '';
             document.getElementById('template-target-count').value = '';
             document.getElementById('template-description').value = '';
         }
@@ -1185,11 +1173,8 @@
             if (!template) return;
             
             editingTemplateId = id;
-            // 先刷新场景类型下拉框，确保显示最新的场景类型
-            updateTemplateSelects();
-            // 然后设置表单值
+            // 设置表单值
             document.getElementById('template-name').value = template.name;
-            document.getElementById('template-scene-type').value = template.scene_type;
             document.getElementById('template-target-count').value = template.target_count;
             document.getElementById('template-description').value = template.description || '';
             document.getElementById('template-form').style.display = 'block';
@@ -1197,11 +1182,10 @@
 
         async function saveTemplate() {
             const name = document.getElementById('template-name').value.trim();
-            const sceneType = document.getElementById('template-scene-type').value.trim();
             const targetCount = document.getElementById('template-target-count').value.trim();
             const description = document.getElementById('template-description').value.trim();
 
-            if (!name || !sceneType || !targetCount) {
+            if (!name || !targetCount) {
                 showStatus('请填写所有必填字段', 'error');
                 return;
             }
@@ -1217,8 +1201,9 @@
                     method: method,
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        name, scene_type: sceneType,
-                        target_count: targetCount, description
+                        name,
+                        target_count: targetCount,
+                        description
                     })
                 });
 
@@ -1338,37 +1323,24 @@
         }
 
         function updateTemplateSelects() {
-            const selects = ['template-scene-type', 'collection-template'];
-            selects.forEach(selectId => {
-                const select = document.getElementById(selectId);
-                if (select) {
-                    const currentValue = select.value;
-                    select.innerHTML = selectId === 'collection-template' 
-                        ? '<option value="">请选择指令模板</option>'
-                        : '<option value="">请选择场景类型</option>';
-                    
-                    if (selectId === 'collection-template') {
-                        templates.forEach(t => {
-                            const option = document.createElement('option');
-                            option.value = t.id;
-                            option.textContent = `${t.name} (${t.scene_type})`;
-                            select.appendChild(option);
-                        });
-                    } else {
-                        scenes.forEach(s => {
-                            const option = document.createElement('option');
-                            option.value = s.name;
-                            option.textContent = s.name;
-                            select.appendChild(option);
-                        });
-                    }
-                    select.value = currentValue;
-                    // 如果是采集模板选择框且有选择值，更新说明信息
-                    if (selectId === 'collection-template' && currentValue) {
-                        updateCollectionInfo();
-                    }
+            const select = document.getElementById('collection-template');
+            if (select) {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">请选择指令模板</option>';
+                
+                templates.forEach(t => {
+                    const option = document.createElement('option');
+                    option.value = t.id;
+                    option.textContent = t.name;
+                    select.appendChild(option);
+                });
+                
+                select.value = currentValue;
+                // 如果有选择值，更新说明信息
+                if (currentValue) {
+                    updateCollectionInfo();
                 }
-            });
+            }
         }
 
         function updateSceneSelects() {
@@ -1403,7 +1375,6 @@
                     templateInfoDiv.className = 'content';
                     templateInfoDiv.innerHTML = `
                         <div style="font-weight: bold; color: #2c3e50; margin-bottom: 8px;">${template.name}</div>
-                        <div style="margin-bottom: 8px;"><strong>场景类型：</strong>${template.scene_type}</div>
                         <div style="margin-bottom: 8px;"><strong>目标数量：</strong>${template.target_count}</div>
                         ${template.description ? `<div><strong>任务说明：</strong><br>${template.description}</div>` : ''}
                     `;

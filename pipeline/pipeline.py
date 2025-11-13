@@ -94,13 +94,14 @@ class IntentLabelPipeline:
         try:
             # 1. 语音识别
             print("\n@@@ 开始语音识别...")
-            success, words_list = audio_to_words_with_timestamps(
+            success, words_list, error_msg = audio_to_words_with_timestamps(
                 audio_path,
                 api_key=self.config.dashscope_api_key
             )
             
             if not success or not words_list:
-                raise ValueError("语音识别失败")
+                error_detail = error_msg if error_msg else "未知错误"
+                raise ValueError(f"语音识别失败: {error_detail}")
             
             print_words_with_timestamps(words_list)
             

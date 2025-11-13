@@ -8,18 +8,48 @@
     "folder_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620",
     "folder_name": "把这个放那个的右边_办公环境_20251111_175620",
     "target_count": 10,
-    "current_count": 1,
+    "current_count": 3,
     "videos": [
       {
-        "filename": "IMG_3492.MOV",
-        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3492.MOV",
-        "relative_path": "IMG_3492.MOV",
-        "size": 8421943,
-        "size_mb": 8.03,
-        "modified_time": "2025-11-11 21:04:32"
+        "filename": "IMG_3588.MOV",
+        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+        "relative_path": "IMG_3588.MOV",
+        "size": 5282003,
+        "size_mb": 5.04,
+        "modified_time": "2025-11-12 16:27:17"
+      },
+      {
+        "filename": "IMG_3589.MOV",
+        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+        "relative_path": "IMG_3589.MOV",
+        "size": 4415967,
+        "size_mb": 4.21,
+        "modified_time": "2025-11-12 16:27:17"
+      },
+      {
+        "filename": "IMG_3590.MOV",
+        "path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+        "relative_path": "IMG_3590.MOV",
+        "size": 3506355,
+        "size_mb": 3.34,
+        "modified_time": "2025-11-12 16:27:17"
       }
     ],
     "created_at": "2025-11-11 17:56:20",
+    "status": "active"
+  },
+  {
+    "id": 2,
+    "template_id": 2,
+    "template_name": "把这个放那个的右边",
+    "scene_id": 2,
+    "scene_name": "办公环境",
+    "folder_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251113_101538",
+    "folder_name": "把这个放那个的右边_办公环境_20251113_101538",
+    "target_count": 10,
+    "current_count": 0,
+    "videos": [],
+    "created_at": "2025-11-13 10:15:38",
     "status": "active"
   }
 ]

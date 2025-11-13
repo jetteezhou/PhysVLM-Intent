@@ -23,12 +23,7 @@ CORS(app)  # 允许跨域请求
 
 # 配置文件路径（相对于项目根目录）
 DATA_FILE = os.path.join(PROJECT_ROOT, 'pipeline/outputs/pipeline_data.json')
-BACKUP_DIR = os.path.join(PROJECT_ROOT, 'annotation_backups')
 HTML_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'annotation_tool.html')
-
-# 确保备份目录存在
-if not os.path.exists(BACKUP_DIR):
-    os.makedirs(BACKUP_DIR)
 
 @app.route('/')
 def index():
@@ -88,30 +83,16 @@ def save_annotations():
         if save_dir and not os.path.exists(save_dir):
             os.makedirs(save_dir, exist_ok=True)
         
-        # 创建备份
-        if os.path.exists(save_file):
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            backup_file = os.path.join(BACKUP_DIR, f'pipeline_data_backup_{timestamp}.json')
-            shutil.copy2(save_file, backup_file)
-            logger.info(f"创建备份文件: {backup_file}")
-        
-        # 保存到目标文件
+        # 直接保存到目标文件，不创建备份
         with open(save_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         
         logger.info(f"标注数据保存成功: {save_file}")
         
-        # 同时保存一份带时间戳的副本
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        annotated_file = os.path.join(BACKUP_DIR, f'annotated_data_{timestamp}.json')
-        with open(annotated_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
         return jsonify({
             'success': True, 
             'message': '标注结果保存成功',
-            'saved_file': save_file,
-            'backup_file': annotated_file
+            'saved_file': save_file
         })
         
     except Exception as e:
@@ -120,43 +101,27 @@ def save_annotations():
 
 @app.route('/api/get_annotations_history')
 def get_annotations_history():
-    """获取标注历史记录"""
-    try:
-        history = []
-        if os.path.exists(BACKUP_DIR):
-            for filename in os.listdir(BACKUP_DIR):
-                if filename.startswith('annotated_data_') and filename.endswith('.json'):
-                    filepath = os.path.join(BACKUP_DIR, filename)
-                    stat = os.stat(filepath)
-                    history.append({
-                        'filename': filename,
-                        'filepath': filepath,
-                        'size': stat.st_size,
-                        'modified_time': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                    })
-        
-        # 按修改时间排序
-        history.sort(key=lambda x: x['modified_time'], reverse=True)
-        
-        return jsonify({'history': history})
-        
-    except Exception as e:
-        logger.error(f"获取历史记录失败: {e}")
-        return jsonify({'error': str(e)}), 500
+    """获取标注历史记录（已废弃，不再使用备份文件）"""
+    # 不再使用备份文件，返回空列表
+    return jsonify({'history': []})
 
-@app.route('/api/load_annotation/<filename>')
-def load_annotation(filename):
-    """加载指定的标注文件"""
+@app.route('/api/load_annotation/<path:filepath>')
+def load_annotation(filepath):
+    """加载指定的标注文件（从pipeline/outputs目录）"""
     try:
-        filepath = os.path.join(BACKUP_DIR, filename)
+        # 处理相对路径和绝对路径
+        if os.path.isabs(filepath):
+            full_path = filepath
+        else:
+            full_path = os.path.join(PROJECT_ROOT, filepath)
         
-        if not os.path.exists(filepath):
+        if not os.path.exists(full_path):
             return jsonify({'error': '文件不存在'}), 404
         
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(full_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        logger.info(f"成功加载标注文件: {filename}")
+        logger.info(f"成功加载标注文件: {filepath}")
         return jsonify(data)
         
     except Exception as e:
@@ -186,37 +151,11 @@ def export_annotations():
 
 @app.route('/api/reset_annotations', methods=['POST'])
 def reset_annotations():
-    """重置标注数据到原始状态"""
-    try:
-        # 查找最早的备份文件
-        backup_files = []
-        if os.path.exists(BACKUP_DIR):
-            for filename in os.listdir(BACKUP_DIR):
-                if filename.startswith('pipeline_data_backup_') and filename.endswith('.json'):
-                    filepath = os.path.join(BACKUP_DIR, filename)
-                    stat = os.stat(filepath)
-                    backup_files.append((filepath, stat.st_mtime))
-        
-        if not backup_files:
-            return jsonify({'error': '没有找到备份文件'}), 404
-        
-        # 选择最早的备份文件
-        backup_files.sort(key=lambda x: x[1])
-        original_backup = backup_files[0][0]
-        
-        # 恢复原始数据
-        shutil.copy2(original_backup, DATA_FILE)
-        
-        logger.info(f"从备份文件恢复数据: {original_backup}")
-        return jsonify({
-            'success': True,
-            'message': '已重置到原始状态',
-            'restored_from': original_backup
-        })
-        
-    except Exception as e:
-        logger.error(f"重置标注数据失败: {e}")
-        return jsonify({'error': str(e)}), 500
+    """重置标注数据到原始状态（已废弃，不再使用备份文件）"""
+    return jsonify({
+        'success': False,
+        'error': '重置功能已废弃，不再使用备份文件。请直接编辑数据文件。'
+    }), 400
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
@@ -319,7 +258,6 @@ if __name__ == '__main__':
     print("🚀 启动标注工具服务器...")
     print("📋 访问地址: http://localhost:5001")
     print("💾 数据文件: pipeline_data.json")
-    print("📁 备份目录: annotation_backups/")
     print("=" * 50)
     
     # 检查数据文件是否存在

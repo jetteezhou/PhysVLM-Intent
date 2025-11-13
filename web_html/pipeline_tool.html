@@ -183,6 +183,21 @@
             transform: none;
         }
 
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #3d4146 100%);
+        }
+
+        .btn-secondary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .collection-card {
             background: white;
             border: 2px solid #e9ecef;
@@ -460,9 +475,14 @@
             </div>
 
             <div class="form-group">
-                <button class="btn btn-primary" id="start-pipeline-btn" onclick="startPipeline()" disabled>
-                    🚀 开始批量生成标注
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" id="start-pipeline-pending-btn" onclick="startPipeline(false)" disabled>
+                        🚀 批量生成未完成的标注
+                    </button>
+                    <button class="btn btn-secondary" id="start-pipeline-all-btn" onclick="startPipeline(true)" disabled>
+                        🚀 批量生成所有标注
+                    </button>
+                </div>
             </div>
 
             <!-- 进度显示区域 -->
@@ -617,10 +637,12 @@
             if (selectedCollectionId) {
                 loadCollectionDetails(selectedCollectionId);
                 document.getElementById('collection-info').style.display = 'block';
-                document.getElementById('start-pipeline-btn').disabled = false;
+                document.getElementById('start-pipeline-pending-btn').disabled = false;
+                document.getElementById('start-pipeline-all-btn').disabled = false;
             } else {
                 document.getElementById('collection-info').style.display = 'none';
-                document.getElementById('start-pipeline-btn').disabled = true;
+                document.getElementById('start-pipeline-pending-btn').disabled = true;
+                document.getElementById('start-pipeline-all-btn').disabled = true;
             }
         }
 
@@ -643,7 +665,7 @@
             }
         }
 
-        async function startPipeline() {
+        async function startPipeline(processAll = false) {
             if (!selectedCollectionId) {
                 showStatus('请先选择采集任务', 'error');
                 return;
@@ -656,19 +678,32 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        collection_id: selectedCollectionId
+                        collection_id: selectedCollectionId,
+                        process_all: processAll
                     })
                 });
 
                 const data = await response.json();
                 
                 if (data.success) {
+                    // 检查是否有待处理的视频
+                    if (data.pending_videos === 0 || !data.task_id) {
+                        // 没有待处理的视频，显示后端返回的消息
+                        showStatus(data.message || '所有视频已完成标注，无需处理', 'info');
+                        // 刷新任务列表
+                        loadCollections();
+                        return;
+                    }
+                    
+                    // 有待处理的视频，启动处理
                     currentTaskId = data.task_id;
                     document.getElementById('progress-section').classList.add('active');
-                    document.getElementById('start-pipeline-btn').disabled = true;
+                    document.getElementById('start-pipeline-pending-btn').disabled = true;
+                    document.getElementById('start-pipeline-all-btn').disabled = true;
                     document.getElementById('log-container').innerHTML = '';
                     lastLogCount = 0;
-                    addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个视频`, 'info');
+                    const modeText = processAll ? '所有' : '未完成的';
+                    addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个${modeText}视频`, 'info');
                     
                     pollPipelineStatus(data.task_id);
                 } else {
@@ -747,14 +782,16 @@
         function handlePipelineComplete(data) {
             addLog('系统', 'Pipeline批量处理完成！', 'success');
             showStatus(`✅ Pipeline处理完成！成功: ${data.processed_count}, 失败: ${data.failed_count}`, 'success');
-            document.getElementById('start-pipeline-btn').disabled = false;
+            document.getElementById('start-pipeline-pending-btn').disabled = false;
+            document.getElementById('start-pipeline-all-btn').disabled = false;
             loadCollections();
         }
 
         function handlePipelineError(data) {
             addLog('错误', data.error || '处理失败', 'error');
             showStatus('❌ Pipeline处理失败: ' + (data.error || '未知错误'), 'error');
-            document.getElementById('start-pipeline-btn').disabled = false;
+            document.getElementById('start-pipeline-pending-btn').disabled = false;
+            document.getElementById('start-pipeline-all-btn').disabled = false;
             loadCollections();
         }
 

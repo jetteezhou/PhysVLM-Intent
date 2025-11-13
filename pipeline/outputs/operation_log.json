@@ -1,0 +1,391 @@
+[
+  {
+    "timestamp": "2025-11-12 16:28:28",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 0,
+      "failed_count": 3,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:31:03",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:31:09",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:31:14",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:31:14",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:34:04",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3588.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:34:06",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3588.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:46:54",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:46:56",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:46:57",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:46:57",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:58:34",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3588.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:58:35",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3588.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:59:18",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3589.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:59:18",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3589.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:59:50",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3590.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 16:59:51",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3590.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:02:31",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3590.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:02:31",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3590.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:03:13",
+    "operation_type": "verify_annotation",
+    "description": "验证标注: IMG_3590.MOV",
+    "details": {
+      "result_file": "pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:03:16",
+    "operation_type": "save_annotation",
+    "description": "保存标注: IMG_3590.MOV",
+    "details": {
+      "saved_file": "/Users/zwj/XLab/PhysVLM-Intent/pipeline/outputs/collection_1/annotations.json",
+      "video_path": "tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:19:26",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:19:30",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:19:57",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:19:57",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:20:03",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:20:11",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:20:14",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:20:14",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:22:27",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:22:27",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:22:29",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-12 17:22:29",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  },
+  {
+    "timestamp": "2025-11-13 10:15:38",
+    "operation_type": "create_collection",
+    "description": "创建采集任务: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 2,
+      "template_name": "把这个放那个的右边",
+      "scene_name": "办公环境",
+      "folder_name": "把这个放那个的右边_办公环境_20251113_101538"
+    }
+  },
+  {
+    "timestamp": "2025-11-13 15:09:36",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3590.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3590.MOV",
+      "video_name": "IMG_3590.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-13 15:09:45",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3589.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3589.MOV",
+      "video_name": "IMG_3589.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-13 15:09:46",
+    "operation_type": "generate_annotation",
+    "description": "生成标注: IMG_3588.MOV",
+    "details": {
+      "collection_id": 1,
+      "video_path": "/Users/zwj/XLab/PhysVLM-Intent/tools/data_collection/datas/把这个放那个的右边_办公环境_20251111_175620/IMG_3588.MOV",
+      "video_name": "IMG_3588.MOV"
+    }
+  },
+  {
+    "timestamp": "2025-11-13 15:09:46",
+    "operation_type": "pipeline_batch_complete",
+    "description": "Pipeline批量处理完成: 把这个放那个的右边 - 办公环境",
+    "details": {
+      "collection_id": 1,
+      "collection_name": "把这个放那个的右边 - 办公环境",
+      "processed_count": 3,
+      "failed_count": 0,
+      "total_videos": 3
+    }
+  }
+]

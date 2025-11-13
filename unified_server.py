@@ -39,14 +39,13 @@ TEMPLATES_FILE = os.path.join(TASK_CONFIG_DIR, 'templates.json')
 SCENES_FILE = os.path.join(TASK_CONFIG_DIR, 'scenes.json')
 COLLECTIONS_FILE = os.path.join(TASK_CONFIG_DIR, 'collections.json')
 COLLECTION_BASE_DIR = os.path.join(PROJECT_ROOT, 'tools/data_collection/datas')
-BACKUP_DIR = os.path.join(PROJECT_ROOT, 'annotation_backups')
 DATA_FILE = os.path.join(PROJECT_ROOT, 'pipeline/outputs/pipeline_data.json')
-HISTORY_FILE = os.path.join(PROJECT_ROOT, 'pipeline/outputs/history.json')  # 历史记录文件
+OPERATION_LOG_FILE = os.path.join(PROJECT_ROOT, 'pipeline/outputs/operation_log.json')  # 操作日志文件
 
 VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.m4v', '.webm'}
 
 # 确保目录存在
-for directory in [TASK_CONFIG_DIR, COLLECTION_BASE_DIR, BACKUP_DIR]:
+for directory in [TASK_CONFIG_DIR, COLLECTION_BASE_DIR]:
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
 
@@ -55,37 +54,6 @@ pipeline_tasks = {}  # {task_id: {status, progress, message, result, error}}
 
 # 并行处理配置
 MAX_WORKER_THREADS = 3  # 最大并行线程数，可根据API限流调整（建议3-5个）
-
-# 历史记录数据结构
-# {
-#   "collections": {
-#     collection_id: {
-#       "collection_id": int,
-#       "collection_name": str,
-#       "video_count": int,
-#       "processed_count": int,
-#       "status": "pending|processing|completed|failed",
-#       "last_updated": str,
-#       "videos": {
-#         video_path: {
-#           "status": "pending|processing|completed|failed",
-#           "progress": int,
-#           "result_file": str,
-#           "processed_at": str
-#         }
-#       }
-#     }
-#   },
-#   "annotations": {
-#     result_file: {
-#       "collection_id": int,
-#       "video_path": str,
-#       "created_at": str,
-#       "viewed_at": str,
-#       "view_count": int
-#     }
-#   }
-# }
 
 # ==================== 初始化数据文件 ====================
 def init_data_files():
@@ -99,161 +67,114 @@ def init_data_files():
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(default, f, ensure_ascii=False, indent=2)
     
-    # 初始化历史记录文件
-    if not os.path.exists(HISTORY_FILE):
-        history_data = {
-            "collections": {},
-            "annotations": {},
-            "operation_logs": []
-        }
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history_data, f, ensure_ascii=False, indent=2)
-    else:
-        # 确保operation_logs字段存在
-        try:
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                history_data = json.load(f)
-            if "operation_logs" not in history_data:
-                history_data["operation_logs"] = []
-                with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(history_data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"初始化操作日志字段失败: {e}")
+    # 初始化操作日志文件
+    if not os.path.exists(OPERATION_LOG_FILE):
+        log_data = []
+        log_dir = os.path.dirname(OPERATION_LOG_FILE)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        with open(OPERATION_LOG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(log_data, f, ensure_ascii=False, indent=2)
 
 init_data_files()
 
-# ==================== 历史记录管理函数 ====================
-def load_history():
-    """加载历史记录"""
+# ==================== 操作日志管理函数 ====================
+def load_operation_logs():
+    """加载操作日志"""
     try:
-        if os.path.exists(HISTORY_FILE):
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                history = json.load(f)
-                # 确保operation_logs字段存在
-                if "operation_logs" not in history:
-                    history["operation_logs"] = []
-                return history
+        if os.path.exists(OPERATION_LOG_FILE):
+            with open(OPERATION_LOG_FILE, 'r', encoding='utf-8') as f:
+                logs = json.load(f)
+                if not isinstance(logs, list):
+                    logs = []
+                return logs
     except Exception as e:
-        logger.error(f"加载历史记录失败: {e}")
-    return {"collections": {}, "annotations": {}, "operation_logs": []}
+        logger.error(f"加载操作日志失败: {e}")
+    return []
 
-def save_history(history_data):
-    """保存历史记录"""
+def save_operation_logs(logs):
+    """保存操作日志"""
     try:
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history_data, f, ensure_ascii=False, indent=2)
+        # 限制日志数量，保留最近1000条
+        if len(logs) > 1000:
+            logs = logs[-1000:]
+        with open(OPERATION_LOG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        logger.error(f"保存历史记录失败: {e}")
-
-def update_collection_history(collection_id, updates):
-    """更新采集任务历史记录"""
-    history = load_history()
-    if "collections" not in history:
-        history["collections"] = {}
-    
-    if collection_id not in history["collections"]:
-        history["collections"][str(collection_id)] = {
-            "collection_id": collection_id,
-            "collection_name": "",
-            "video_count": 0,
-            "processed_count": 0,
-            "status": "pending",
-            "last_updated": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "videos": {}
-        }
-    
-    history["collections"][str(collection_id)].update(updates)
-    history["collections"][str(collection_id)]["last_updated"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    save_history(history)
-
-def update_video_history(collection_id, video_path, updates):
-    """更新视频处理历史记录"""
-    history = load_history()
-    if "collections" not in history:
-        history["collections"] = {}
-    
-    if str(collection_id) not in history["collections"]:
-        update_collection_history(collection_id, {})
-    
-    if "videos" not in history["collections"][str(collection_id)]:
-        history["collections"][str(collection_id)]["videos"] = {}
-    
-    if video_path not in history["collections"][str(collection_id)]["videos"]:
-        history["collections"][str(collection_id)]["videos"][video_path] = {
-            "status": "pending",
-            "progress": 0,
-            "result_file": None,
-            "processed_at": None
-        }
-    
-    history["collections"][str(collection_id)]["videos"][video_path].update(updates)
-    save_history(history)
-
-def record_annotation_view(result_file, collection_id=None, video_path=None):
-    """记录标注查看"""
-    history = load_history()
-    if "annotations" not in history:
-        history["annotations"] = {}
-    
-    if result_file not in history["annotations"]:
-        history["annotations"][result_file] = {
-            "collection_id": collection_id,
-            "video_path": video_path,
-            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "viewed_at": None,
-            "view_count": 0,
-            "verified": False,
-            "verified_at": None
-        }
-    
-    history["annotations"][result_file]["viewed_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    history["annotations"][result_file]["view_count"] = history["annotations"][result_file].get("view_count", 0) + 1
-    
-    # 确保verified字段存在
-    if "verified" not in history["annotations"][result_file]:
-        history["annotations"][result_file]["verified"] = False
-        history["annotations"][result_file]["verified_at"] = None
-    
-    save_history(history)
-    
-    # 记录操作日志（仅在首次查看时记录）
-    if history["annotations"][result_file]["view_count"] == 1:
-        video_name = os.path.basename(history["annotations"][result_file].get("video_path", ""))
-        record_operation_log(
-            'view_annotation',
-            f'查看标注: {video_name}',
-            {
-                'result_file': result_file,
-                'video_path': history["annotations"][result_file].get("video_path"),
-                'video_name': video_name
-            }
-        )
+        logger.error(f"保存操作日志失败: {e}")
 
 def record_operation_log(operation_type, description, details=None):
     """记录操作日志（仅记录成功的操作）"""
     try:
-        history = load_history()
-        if "operation_logs" not in history:
-            history["operation_logs"] = []
-        
+        logs = load_operation_logs()
         log_entry = {
             "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "operation_type": operation_type,
             "description": description,
             "details": details or {}
         }
-        
-        history["operation_logs"].append(log_entry)
-        
-        # 限制日志数量，保留最近1000条
-        if len(history["operation_logs"]) > 1000:
-            history["operation_logs"] = history["operation_logs"][-1000:]
-        
-        save_history(history)
+        logs.append(log_entry)
+        save_operation_logs(logs)
     except Exception as e:
         logger.error(f"记录操作日志失败: {e}")
 
 # ==================== 工具函数 ====================
+def normalize_path(path):
+    """规范化路径（统一使用正斜杠）"""
+    if not path:
+        return path
+    return os.path.normpath(path).replace('\\', '/')
+
+def get_relative_path(path, project_root=None):
+    """获取相对于项目根目录的路径"""
+    if not path:
+        return path
+    if project_root is None:
+        project_root = PROJECT_ROOT
+    try:
+        abs_path = os.path.abspath(path)
+        if abs_path.startswith(project_root):
+            return os.path.normpath(os.path.relpath(abs_path, project_root))
+        return os.path.normpath(path)
+    except:
+        return path
+
+def paths_match(path1, path2, project_root=None):
+    """判断两个路径是否匹配（支持相对路径和绝对路径）"""
+    if not path1 or not path2:
+        return False
+    
+    if project_root is None:
+        project_root = PROJECT_ROOT
+    
+    # 规范化路径
+    norm_path1 = normalize_path(path1)
+    norm_path2 = normalize_path(path2)
+    
+    # 直接比较规范化后的路径
+    if norm_path1 == norm_path2:
+        return True
+    
+    # 尝试将两个路径都转换为绝对路径后比较
+    try:
+        abs_path1 = os.path.abspath(path1)
+        abs_path2 = os.path.abspath(path2)
+        if normalize_path(abs_path1) == normalize_path(abs_path2):
+            return True
+    except:
+        pass
+    
+    # 尝试将两个路径都转换为相对路径后比较
+    try:
+        rel_path1 = get_relative_path(path1, project_root)
+        rel_path2 = get_relative_path(path2, project_root)
+        if normalize_path(rel_path1) == normalize_path(rel_path2):
+            return True
+    except:
+        pass
+    
+    return False
+
 def scan_videos(directory):
     """扫描目录中的视频文件"""
     videos = []
@@ -366,7 +287,7 @@ def create_template():
     """创建任务模板"""
     try:
         data = request.get_json()
-        required_fields = ['name', 'scene_type', 'target_count', 'description']
+        required_fields = ['name', 'target_count']
         for field in required_fields:
             if field not in data:
                 return jsonify({'success': False, 'error': f'缺少必要字段: {field}'}), 400
@@ -381,9 +302,8 @@ def create_template():
         new_template = {
             'id': template_id,
             'name': data['name'],
-            'scene_type': data['scene_type'],
             'target_count': int(data['target_count']),
-            'description': data['description'],
+            'description': data.get('description', ''),
             'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
@@ -416,8 +336,6 @@ def update_template(template_id):
         
         if 'name' in data:
             templates[template_index]['name'] = data['name']
-        if 'scene_type' in data:
-            templates[template_index]['scene_type'] = data['scene_type']
         if 'target_count' in data:
             templates[template_index]['target_count'] = int(data['target_count'])
         if 'description' in data:
@@ -646,10 +564,7 @@ def scan_collection(collection_id):
         collection['current_count'] = len(videos)
         collection['videos'] = videos
         
-        # 更新历史记录中的视频数量
-        update_collection_history(collection_id, {
-            "video_count": len(videos)
-        })
+        # 不再需要更新历史记录，进度直接从文件系统读取
         
         collection_index = next((i for i, c in enumerate(collections) if c.get('id') == collection_id), None)
         if collection_index is not None:
@@ -750,30 +665,170 @@ def serve_video(filename):
         logger.error(f"提供视频文件失败: {e}")
         return jsonify({'error': str(e)}), 500
 
+# ==================== 标注文件管理函数 ====================
+def get_annotations_file_path(collection_id):
+    """获取标注文件路径"""
+    return os.path.join(
+        PROJECT_ROOT,
+        'pipeline', 'outputs',
+        f'collection_{collection_id}',
+        'annotations.json'
+    )
+
+def load_annotations(collection_id):
+    """加载标注文件"""
+    annotations_file = get_annotations_file_path(collection_id)
+    if os.path.exists(annotations_file):
+        try:
+            with open(annotations_file, 'r', encoding='utf-8') as f:
+                annotations = json.load(f)
+                if not isinstance(annotations, list):
+                    annotations = []
+                return annotations
+        except Exception as e:
+            logger.error(f"加载标注文件失败: {e}")
+            return []
+    return []
+
+def save_annotations_file(collection_id, annotations):
+    """保存标注文件（辅助函数）"""
+    annotations_file = get_annotations_file_path(collection_id)
+    annotations_dir = os.path.dirname(annotations_file)
+    if not os.path.exists(annotations_dir):
+        os.makedirs(annotations_dir, exist_ok=True)
+    
+    with open(annotations_file, 'w', encoding='utf-8') as f:
+        json.dump(annotations, f, ensure_ascii=False, indent=2)
+
+def init_annotations_for_videos(collection_id, videos):
+    """为视频列表初始化标注文件"""
+    annotations = load_annotations(collection_id)
+    
+    for video in videos:
+        video_path = video['path']
+        rel_video_path = get_relative_path(video_path)
+        
+        # 检查是否已存在（使用路径匹配）
+        found = False
+        for ann in annotations:
+            ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+            if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                # 已存在，保持不变
+                found = True
+                break
+        
+        if not found:
+            # 新建条目
+            annotations.append({
+                "input_video_path": rel_video_path,
+                "video_path": None,
+                "audio_path": None,
+                "last_image_path": None,
+                "last_image_path_absolute": None,
+                "video_description": None,
+                "result_data": None,
+                "objects": [],
+                "image_dimensions": None,
+                "verified": False
+            })
+    
+    save_annotations_file(collection_id, annotations)
+    return annotations
+
+def update_annotation_result(collection_id, video_path, result_data):
+    """更新标注结果"""
+    annotations = load_annotations(collection_id)
+    
+    rel_video_path = get_relative_path(video_path)
+    
+    # 查找对应的条目
+    for ann in annotations:
+        ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+        if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+            # 检查是否是重新生成标注（之前已有result_data）
+            was_previously_processed = ann.get('result_data') is not None
+            
+            # 更新结果数据
+            ann.update({
+                "input_video_path": rel_video_path,
+                "video_path": get_relative_path(result_data.get('video_path')),
+                "audio_path": get_relative_path(result_data.get('audio_path')),
+                "last_image_path": get_relative_path(result_data.get('last_image_path')),
+                "last_image_path_absolute": result_data.get('last_image_path_absolute'),
+                "video_description": result_data.get('video_description'),
+                "result_data": result_data.get('result_data'),
+                "objects": result_data.get('objects', []),
+                "image_dimensions": result_data.get('image_dimensions'),
+                "verified": False if was_previously_processed else ann.get('verified', False)  # 重新生成时重置验证状态
+            })
+            
+            # 如果重新生成，清除验证时间戳
+            if was_previously_processed:
+                ann.pop('verified_at', None)
+            
+            save_annotations_file(collection_id, annotations)
+            return True
+    
+    return False
+
 # ==================== Pipeline API ====================
 @app.route('/api/pipeline/collections', methods=['GET'])
 def get_pipeline_collections():
-    """获取可用于Pipeline的采集任务列表，包含历史记录信息"""
+    """获取可用于Pipeline的采集任务列表，从annotations.json文件判断进度"""
     try:
         with open(COLLECTIONS_FILE, 'r', encoding='utf-8') as f:
             collections = json.load(f)
-        
-        history = load_history()
         
         result = []
         for col in collections:
             collection_id = col.get('id')
             videos = scan_videos(col.get('folder_path', ''))
             
-            # 获取历史记录
-            collection_history = history.get("collections", {}).get(str(collection_id), {})
-            processed_count = collection_history.get("processed_count", 0)
-            status = collection_history.get("status", "pending")
+            # 加载标注文件
+            annotations = load_annotations(collection_id)
+            
+            # 统计已处理的视频数量（result_data 不为 None）
+            processed_count = sum(1 for ann in annotations if ann.get('result_data') is not None)
             
             # 计算每个视频的处理状态
             video_statuses = {}
-            if str(collection_id) in history.get("collections", {}):
-                video_statuses = history["collections"][str(collection_id)].get("videos", {})
+            
+            for video in videos:
+                video_path = video['path']
+                rel_video_path = get_relative_path(video_path)
+                
+                # 查找对应的标注条目
+                ann_entry = None
+                for ann in annotations:
+                    ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                    if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                        ann_entry = ann
+                        break
+                
+                if ann_entry and ann_entry.get('result_data') is not None:
+                    annotations_file = get_annotations_file_path(collection_id)
+                    processed_at = datetime.fromtimestamp(os.path.getmtime(annotations_file)).strftime('%Y-%m-%d %H:%M:%S') if os.path.exists(annotations_file) else None
+                    video_statuses[video_path] = {
+                        "status": "completed",
+                        "progress": 100,
+                        "result_file": os.path.relpath(annotations_file, PROJECT_ROOT),
+                        "processed_at": processed_at
+                    }
+                else:
+                    video_statuses[video_path] = {
+                        "status": "pending",
+                        "progress": 0,
+                        "result_file": None,
+                        "processed_at": None
+                    }
+            
+            # 确定状态
+            if processed_count == 0:
+                status = "pending"
+            elif processed_count == len(videos):
+                status = "completed"
+            else:
+                status = "partial"
             
             result.append({
                 'id': collection_id,
@@ -785,7 +840,7 @@ def get_pipeline_collections():
                 'status': status,
                 'videos': videos,
                 'video_statuses': video_statuses,
-                'last_updated': collection_history.get('last_updated', col.get('created_at', ''))
+                'last_updated': col.get('created_at', '')
             })
         
         return jsonify({'success': True, 'collections': result})
@@ -795,10 +850,15 @@ def get_pipeline_collections():
 
 @app.route('/api/pipeline/start', methods=['POST'])
 def start_pipeline():
-    """启动Pipeline处理 - 以采集任务文件夹为单位批量处理"""
+    """启动Pipeline处理 - 以采集任务文件夹为单位批量处理
+    支持两种模式：
+    - process_all=False: 只处理未完成的视频（默认）
+    - process_all=True: 处理所有视频（重新生成所有标注）
+    """
     try:
         data = request.get_json()
         collection_id = data.get('collection_id')
+        process_all = data.get('process_all', False)  # 默认为False，只处理未完成的
         
         if not collection_id:
             return jsonify({'success': False, 'error': '缺少collection_id参数'}), 400
@@ -820,68 +880,93 @@ def start_pipeline():
         if not videos:
             return jsonify({'success': False, 'error': '文件夹中没有视频文件'}), 400
         
+        # 初始化标注文件
+        annotations = init_annotations_for_videos(collection_id, videos)
+        
+        # 根据process_all参数决定处理哪些视频
+        pending_videos = []
+        if process_all:
+            # 处理所有视频
+            pending_videos = videos
+        else:
+            # 只处理未完成的视频（result_data 为 None）
+            for video in videos:
+                video_path = video['path']
+                rel_video_path = get_relative_path(video_path)
+                
+                # 查找对应的标注条目
+                ann_entry = None
+                for ann in annotations:
+                    ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                    if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                        ann_entry = ann
+                        break
+                
+                # 如果 result_data 为 None，则需要处理
+                if not ann_entry or ann_entry.get('result_data') is None:
+                    pending_videos.append(video)
+        
+        if not pending_videos:
+            mode_text = '所有' if process_all else '未完成的'
+            return jsonify({
+                'success': True,
+                'message': f'所有{mode_text}视频已完成标注，无需处理',
+                'total_videos': len(videos),
+                'pending_videos': 0
+            })
+        
         # 生成任务ID
         task_id = f"task_{collection_id}_{int(time.time() * 1000)}"
         
-        # 初始化采集任务历史记录
-        collection_name = f"{collection.get('template_name')} - {collection.get('scene_name')}"
-        update_collection_history(collection_id, {
-            "collection_name": collection_name,
-            "video_count": len(videos),
-            "processed_count": 0,
-            "status": "processing"
-        })
-        
         # 初始化任务状态
+        mode_text = '所有' if process_all else '未完成的'
         pipeline_tasks[task_id] = {
             'collection_id': collection_id,
             'status': 'running',
             'progress': 0,
             'current_step': '初始化',
-            'message': f'准备处理 {len(videos)} 个视频...',
+            'message': f'准备处理 {len(pending_videos)} 个{mode_text}视频（共 {len(videos)} 个视频）...',
             'current_video': None,
             'current_video_index': 0,
-            'total_videos': len(videos),
+            'total_videos': len(pending_videos),
+            'total_all_videos': len(videos),
             'logs': [],
             'results': [],
-            'error': None
+            'error': None,
+            'process_all': process_all
         }
         
         # 在后台线程中批量处理视频（并行处理）
         def run_batch_pipeline():
             try:
-                total_videos = len(videos)
+                total_videos = len(pending_videos)
                 processed_count = 0
                 failed_count = 0
                 completed_lock = threading.Lock()  # 用于线程安全的计数
                 
-                update_pipeline_progress(task_id, '准备', 0, f'开始并行处理采集任务，共 {total_videos} 个视频（最大并行数: {MAX_WORKER_THREADS}）')
+                mode_text = '所有' if process_all else '未完成的'
+                update_pipeline_progress(task_id, '准备', 0, f'开始并行处理采集任务，共 {total_videos} 个{mode_text}视频（最大并行数: {MAX_WORKER_THREADS}）')
                 
                 # 处理单个视频的函数
                 def process_single_video(video_info):
                     """处理单个视频"""
+                    nonlocal processed_count, failed_count  # 在函数开始处声明 nonlocal
                     idx, video = video_info
                     video_path = video['path']
                     video_filename = video['filename']
                     
                     try:
-                        # 更新视频历史记录 - 开始处理
-                        update_video_history(collection_id, video_path, {
-                            "status": "processing",
-                            "progress": 10
-                        })
-                        
-                        # 为每个视频生成独立的输出文件
+                        # 创建临时输出文件（用于 pipeline.process）
                         video_name = os.path.splitext(video_filename)[0]
-                        output_file = os.path.join(
+                        temp_output_file = os.path.join(
                             PROJECT_ROOT, 
                             'pipeline/outputs', 
                             f'collection_{collection_id}',
-                            f'{video_name}_pipeline_data.json'
+                            f'{video_name}_temp_pipeline_data.json'
                         )
                         
                         # 确保输出目录存在
-                        output_dir = os.path.dirname(output_file)
+                        output_dir = os.path.dirname(temp_output_file)
                         os.makedirs(output_dir, exist_ok=True)
                         
                         # 创建Pipeline实例（每个线程独立实例，避免冲突）
@@ -889,28 +974,17 @@ def start_pipeline():
                         pipeline = IntentLabelPipeline(config)
                         
                         # 处理视频
-                        result = pipeline.process(video_path, output_file=output_file)
+                        result = pipeline.process(video_path, output_file=temp_output_file)
                         
-                        # 更新视频历史记录 - 完成
-                        update_video_history(collection_id, video_path, {
-                            "status": "completed",
-                            "progress": 100,
-                            "result_file": output_file,
-                            "processed_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        })
+                        # 更新 annotations.json 文件
+                        update_annotation_result(collection_id, video_path, result)
                         
-                        # 记录标注文件
-                        history = load_history()
-                        if "annotations" not in history:
-                            history["annotations"] = {}
-                        history["annotations"][output_file] = {
-                            "collection_id": collection_id,
-                            "video_path": video_path,
-                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            "viewed_at": None,
-                            "view_count": 0
-                        }
-                        save_history(history)
+                        # 删除临时文件
+                        if os.path.exists(temp_output_file):
+                            try:
+                                os.remove(temp_output_file)
+                            except:
+                                pass
                         
                         # 记录操作日志
                         record_operation_log(
@@ -919,23 +993,22 @@ def start_pipeline():
                             {
                                 'collection_id': collection_id,
                                 'video_path': video_path,
-                                'video_name': video_filename,
-                                'result_file': output_file
+                                'video_name': video_filename
                             }
                         )
                         
-                        # 线程安全地更新计数
+                        # 线程安全地更新计数和进度
                         with completed_lock:
-                            nonlocal processed_count
                             processed_count += 1
-                            update_collection_history(collection_id, {
-                                "processed_count": processed_count
-                            })
+                            current_total = processed_count + failed_count
+                            progress = int((current_total / total_videos) * 100)
+                            
+                            update_pipeline_progress(task_id, '处理视频', progress,
+                                                   f'视频 {current_total}/{total_videos} 处理完成 (并行处理中...)')
                         
                         return {
                             'video': video_filename,
                             'status': 'completed',
-                            'result_file': output_file,
                             'index': idx
                         }
                         
@@ -943,15 +1016,14 @@ def start_pipeline():
                         error_msg = f'处理视频 {video_filename} 失败: {str(e)}'
                         logger.error(error_msg)
                         
-                        update_video_history(collection_id, video_path, {
-                            "status": "failed",
-                            "progress": 0
-                        })
-                        
-                        # 线程安全地更新失败计数
+                        # 线程安全地更新失败计数和进度
                         with completed_lock:
-                            nonlocal failed_count
                             failed_count += 1
+                            current_total = processed_count + failed_count
+                            progress = int((current_total / total_videos) * 100)
+                            
+                            update_pipeline_progress(task_id, '处理视频', progress,
+                                                   f'视频 {current_total}/{total_videos} 处理失败 (并行处理中...)')
                         
                         add_log_entry(task_id, '错误', error_msg)
                         
@@ -967,7 +1039,7 @@ def start_pipeline():
                     # 提交所有任务
                     future_to_video = {
                         executor.submit(process_single_video, (idx, video)): video 
-                        for idx, video in enumerate(videos)
+                        for idx, video in enumerate(pending_videos)
                     }
                     
                     # 处理完成的任务
@@ -976,31 +1048,14 @@ def start_pipeline():
                         try:
                             result = future.result()
                             
-                            # 线程安全地更新结果和计数
+                            # 线程安全地更新结果
                             with completed_lock:
                                 pipeline_tasks[task_id]['results'].append(result)
-                                
-                                # 更新进度（使用线程安全后的计数）
-                                current_total = processed_count + failed_count
-                                progress = int((current_total / total_videos) * 100)
-                                
-                                if result['status'] == 'completed':
-                                    update_pipeline_progress(task_id, '处理视频', progress,
-                                                           f'视频 {current_total}/{total_videos} 处理完成 (并行处理中...)')
-                                else:
-                                    update_pipeline_progress(task_id, '处理视频', progress,
-                                                           f'视频 {current_total}/{total_videos} 处理失败 (并行处理中...)')
                                 
                         except Exception as e:
                             logger.error(f"获取任务结果失败: {e}")
                             with completed_lock:
                                 failed_count += 1
-                
-                # 更新采集任务历史记录
-                update_collection_history(collection_id, {
-                    "processed_count": processed_count,
-                    "status": "completed" if failed_count == 0 else "partial"
-                })
                 
                 # 完成
                 update_pipeline_progress(task_id, '完成', 100, 
@@ -1035,9 +1090,6 @@ def start_pipeline():
                 })
                 
             except Exception as e:
-                update_collection_history(collection_id, {
-                    "status": "failed"
-                })
                 pipeline_tasks[task_id]['status'] = 'failed'
                 pipeline_tasks[task_id]['error'] = str(e)
                 pipeline_tasks[task_id]['message'] = f'批量处理失败: {str(e)}'
@@ -1054,8 +1106,9 @@ def start_pipeline():
             'success': True,
             'task_id': task_id,
             'collection_id': collection_id,
-            'total_videos': len(videos),
-            'message': f'Pipeline已启动，将处理 {len(videos)} 个视频'
+            'total_videos': len(pending_videos),
+            'total_all_videos': len(videos),
+            'message': f'Pipeline已启动，将处理 {len(pending_videos)} 个未完成的视频（共 {len(videos)} 个视频）'
         })
         
     except Exception as e:
@@ -1086,23 +1139,105 @@ def get_pipeline_status(task_id):
         'task': pipeline_tasks[task_id]
     })
 
-# ==================== 历史记录 API ====================
-@app.route('/api/history/collections', methods=['GET'])
-def get_collections_history():
-    """获取采集任务历史记录（实时刷新）"""
+@app.route('/api/pipeline/progress/<int:collection_id>', methods=['GET'])
+def get_pipeline_progress(collection_id):
+    """获取采集任务的标注进度（实时刷新）"""
     try:
+        videos = []
         with open(COLLECTIONS_FILE, 'r', encoding='utf-8') as f:
             collections = json.load(f)
         
-        history = load_history()
+        collection = next((c for c in collections if c.get('id') == collection_id), None)
+        if not collection:
+            return jsonify({'success': False, 'error': '采集任务不存在'}), 404
+        
+        folder_path = collection.get('folder_path')
+        if folder_path and os.path.exists(folder_path):
+            videos = scan_videos(folder_path)
+        
+        # 加载标注文件
+        annotations = load_annotations(collection_id)
+        
+        # 统计进度
+        total_count = len(videos)
+        processed_count = sum(1 for ann in annotations if ann.get('result_data') is not None)
+        verified_count = sum(1 for ann in annotations if ann.get('verified', False))
+        
+        return jsonify({
+            'success': True,
+            'collection_id': collection_id,
+            'total_count': total_count,
+            'processed_count': processed_count,
+            'verified_count': verified_count,
+            'progress': int((processed_count / total_count * 100)) if total_count > 0 else 0,
+            'verified_progress': int((verified_count / total_count * 100)) if total_count > 0 else 0
+        })
+    except Exception as e:
+        logger.error(f"获取标注进度失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== 历史记录 API ====================
+@app.route('/api/history/collections', methods=['GET'])
+def get_collections_history():
+    """获取采集任务历史记录（实时刷新，从annotations.json读取进度）"""
+    try:
+        with open(COLLECTIONS_FILE, 'r', encoding='utf-8') as f:
+            collections = json.load(f)
         
         result = []
         for col in collections:
             collection_id = col.get('id')
             videos = scan_videos(col.get('folder_path', ''))
             
-            # 获取历史记录
-            collection_history = history.get("collections", {}).get(str(collection_id), {})
+            # 加载标注文件
+            annotations = load_annotations(collection_id)
+            
+            # 统计已处理的视频数量（result_data 不为 None）
+            processed_count = sum(1 for ann in annotations if ann.get('result_data') is not None)
+            
+            # 计算每个视频的处理状态
+            video_list = []
+            annotations_file = get_annotations_file_path(collection_id)
+            file_mtime = datetime.fromtimestamp(os.path.getmtime(annotations_file)).strftime('%Y-%m-%d %H:%M:%S') if os.path.exists(annotations_file) else None
+            
+            for video in videos:
+                video_path = video['path']
+                rel_video_path = get_relative_path(video_path)
+                
+                # 查找对应的标注条目
+                ann_entry = None
+                for ann in annotations:
+                    ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                    if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                        ann_entry = ann
+                        break
+                
+                if ann_entry and ann_entry.get('result_data') is not None:
+                    video_list.append({
+                        **video,
+                        'status': 'completed',
+                        'progress': 100,
+                        'result_file': os.path.relpath(annotations_file, PROJECT_ROOT),
+                        'processed_at': file_mtime,
+                        'verified': ann_entry.get('verified', False)
+                    })
+                else:
+                    video_list.append({
+                        **video,
+                        'status': 'pending',
+                        'progress': 0,
+                        'result_file': None,
+                        'processed_at': None,
+                        'verified': False
+                    })
+            
+            # 确定状态
+            if processed_count == 0:
+                status = "pending"
+            elif processed_count == len(videos):
+                status = "completed"
+            else:
+                status = "partial"
             
             result.append({
                 'id': collection_id,
@@ -1110,19 +1245,10 @@ def get_collections_history():
                 'template_name': col.get('template_name'),
                 'scene_name': col.get('scene_name'),
                 'video_count': len(videos),
-                'processed_count': collection_history.get("processed_count", 0),
-                'status': collection_history.get("status", "pending"),
-                'last_updated': collection_history.get('last_updated', col.get('created_at', '')),
-                'videos': [
-                    {
-                        **video,
-                        'status': collection_history.get("videos", {}).get(video['path'], {}).get("status", "pending"),
-                        'progress': collection_history.get("videos", {}).get(video['path'], {}).get("progress", 0),
-                        'result_file': collection_history.get("videos", {}).get(video['path'], {}).get("result_file"),
-                        'processed_at': collection_history.get("videos", {}).get(video['path'], {}).get("processed_at")
-                    }
-                    for video in videos
-                ]
+                'processed_count': processed_count,
+                'status': status,
+                'last_updated': col.get('created_at', ''),
+                'videos': video_list
             })
         
         return jsonify({'success': True, 'collections': result})
@@ -1132,35 +1258,35 @@ def get_collections_history():
 
 @app.route('/api/history/annotations', methods=['GET'])
 def get_annotations_history():
-    """获取已生成的标注历史记录"""
+    """获取已生成的标注历史记录（从annotations.json读取）"""
     try:
-        history = load_history()
-        annotations = history.get("annotations", {})
+        with open(COLLECTIONS_FILE, 'r', encoding='utf-8') as f:
+            collections = json.load(f)
         
         result = []
-        for result_file, info in annotations.items():
-            if os.path.exists(result_file):
-                result.append({
-                    'result_file': result_file,
-                    'collection_id': info.get('collection_id'),
-                    'video_path': info.get('video_path'),
-                    'video_name': os.path.basename(info.get('video_path', '')),
-                    'created_at': info.get('created_at'),
-                    'viewed_at': info.get('viewed_at'),
-                    'view_count': info.get('view_count', 0),
-                    'file_exists': True
-                })
-            else:
-                result.append({
-                    'result_file': result_file,
-                    'collection_id': info.get('collection_id'),
-                    'video_path': info.get('video_path'),
-                    'video_name': os.path.basename(info.get('video_path', '')),
-                    'created_at': info.get('created_at'),
-                    'viewed_at': info.get('viewed_at'),
-                    'view_count': info.get('view_count', 0),
-                    'file_exists': False
-                })
+        for col in collections:
+            collection_id = col.get('id')
+            annotations = load_annotations(collection_id)
+            annotations_file = get_annotations_file_path(collection_id)
+            
+            if os.path.exists(annotations_file):
+                created_at = datetime.fromtimestamp(os.path.getmtime(annotations_file)).strftime('%Y-%m-%d %H:%M:%S')
+                
+                for ann in annotations:
+                    if ann.get('result_data') is not None:  # 只返回已完成的标注
+                        video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                        result.append({
+                            'result_file': os.path.relpath(annotations_file, PROJECT_ROOT),
+                            'collection_id': collection_id,
+                            'video_path': video_path,
+                            'video_name': os.path.basename(video_path) if video_path else '未知视频',
+                            'created_at': created_at,
+                            'viewed_at': None,
+                            'view_count': 0,
+                            'file_exists': True,
+                            'verified': ann.get('verified', False),
+                            'verified_at': ann.get('verified_at')
+                        })
         
         # 按创建时间排序
         result.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -1174,8 +1300,7 @@ def get_annotations_history():
 def get_operation_logs():
     """获取操作日志"""
     try:
-        history = load_history()
-        logs = history.get("operation_logs", [])
+        logs = load_operation_logs()
         
         # 按时间倒序排列（最新的在前）
         logs.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
@@ -1183,84 +1308,59 @@ def get_operation_logs():
         # 限制返回数量，最多返回最近500条
         logs = logs[:500]
         
-        return jsonify({'success': True, 'logs': logs, 'total': len(history.get("operation_logs", []))})
+        return jsonify({'success': True, 'logs': logs, 'total': len(logs)})
     except Exception as e:
         logger.error(f"获取操作日志失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/history/viewed', methods=['GET'])
 def get_viewed_annotations():
-    """获取已查看的标注历史记录"""
-    try:
-        history = load_history()
-        annotations = history.get("annotations", {})
-        
-        result = []
-        for result_file, info in annotations.items():
-            if info.get('viewed_at'):
-                if os.path.exists(result_file):
-                    result.append({
-                        'result_file': result_file,
-                        'collection_id': info.get('collection_id'),
-                        'video_path': info.get('video_path'),
-                        'video_name': os.path.basename(info.get('video_path', '')),
-                        'created_at': info.get('created_at'),
-                        'viewed_at': info.get('viewed_at'),
-                        'view_count': info.get('view_count', 0)
-                    })
-        
-        # 按查看时间排序
-        result.sort(key=lambda x: x.get('viewed_at', ''), reverse=True)
-        
-        return jsonify({'success': True, 'annotations': result})
-    except Exception as e:
-        logger.error(f"获取已查看标注历史记录失败: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """获取已查看的标注历史记录（已废弃，不再跟踪查看历史）"""
+    # 不再跟踪查看历史，返回空列表
+    return jsonify({'success': True, 'annotations': []})
 
 @app.route('/api/annotation/collections', methods=['GET'])
 def get_annotation_collections():
-    """获取可用于标注检验的采集任务列表（包含标注文件）"""
+    """获取可用于标注检验的采集任务列表（从annotations.json读取）"""
     try:
         with open(COLLECTIONS_FILE, 'r', encoding='utf-8') as f:
             collections = json.load(f)
         
-        history = load_history()
-        annotations = history.get("annotations", {})
-        
         result = []
         for col in collections:
             collection_id = col.get('id')
+            annotations = load_annotations(collection_id)
+            annotations_file = get_annotations_file_path(collection_id)
             
-            # 获取该采集任务的所有标注文件
-            collection_annotations = [
-                {
-                    'result_file': result_file,
-                    'video_path': info.get('video_path'),
-                    'video_name': os.path.basename(info.get('video_path', '')),
-                    'created_at': info.get('created_at'),
-                    'viewed_at': info.get('viewed_at'),
-                    'view_count': info.get('view_count', 0),
-                    'verified': info.get('verified', False),
-                    'verified_at': info.get('verified_at'),
-                    'file_exists': os.path.exists(result_file)
-                }
-                for result_file, info in annotations.items()
-                if info.get('collection_id') == collection_id and os.path.exists(result_file)
-            ]
+            # 获取该采集任务的所有标注文件（只包含已完成的）
+            collection_annotations = []
+            for ann in annotations:
+                if ann.get('result_data') is not None:  # 只包含已完成的标注
+                    video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                    collection_annotations.append({
+                        'result_file': os.path.relpath(annotations_file, PROJECT_ROOT),
+                        'video_path': video_path,
+                        'video_name': os.path.basename(video_path) if video_path else '未知视频',
+                        'created_at': datetime.fromtimestamp(os.path.getmtime(annotations_file)).strftime('%Y-%m-%d %H:%M:%S') if os.path.exists(annotations_file) else None,
+                        'verified': ann.get('verified', False),
+                        'verified_at': ann.get('verified_at'),
+                        'file_exists': True
+                    })
             
             # 统计验证进度
             total_count = len(collection_annotations)
             verified_count = sum(1 for ann in collection_annotations if ann.get('verified', False))
             
-            result.append({
-                'id': collection_id,
-                'name': f"{col.get('template_name')} - {col.get('scene_name')}",
-                'template_name': col.get('template_name'),
-                'scene_name': col.get('scene_name'),
-                'total_annotations': total_count,
-                'verified_count': verified_count,
-                'annotations': collection_annotations
-            })
+            if total_count > 0:
+                result.append({
+                    'id': collection_id,
+                    'name': f"{col.get('template_name')} - {col.get('scene_name')}",
+                    'template_name': col.get('template_name'),
+                    'scene_name': col.get('scene_name'),
+                    'total_annotations': total_count,
+                    'verified_count': verified_count,
+                    'annotations': collection_annotations
+                })
         
         return jsonify({'success': True, 'collections': result})
     except Exception as e:
@@ -1273,29 +1373,81 @@ def verify_annotation():
     try:
         data = request.get_json()
         result_file = data.get('result_file')
+        video_path = data.get('video_path')  # 新增：视频路径参数
         
         if not result_file:
             return jsonify({'success': False, 'error': '缺少result_file参数'}), 400
         
-        history = load_history()
-        if "annotations" not in history:
-            history["annotations"] = {}
+        # 处理文件路径（支持相对路径和绝对路径）
+        if os.path.isabs(result_file):
+            annotations_file = result_file
+        else:
+            annotations_file = os.path.join(PROJECT_ROOT, result_file)
         
-        if result_file not in history["annotations"]:
-            return jsonify({'success': False, 'error': '标注文件不存在于历史记录中'}), 404
+        # 确保路径是有效的字符串
+        if not annotations_file or not isinstance(annotations_file, str):
+            return jsonify({'success': False, 'error': '无效的文件路径'}), 400
         
-        history["annotations"][result_file]["verified"] = True
-        history["annotations"][result_file]["verified_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        save_history(history)
+        # 检查annotations.json文件是否存在
+        if not os.path.exists(annotations_file):
+            return jsonify({'success': False, 'error': f'标注文件不存在: {annotations_file}'}), 404
+        
+        # 从文件路径推断collection_id
+        collection_id = None
+        rel_path = os.path.relpath(annotations_file, PROJECT_ROOT) if not os.path.isabs(annotations_file) else annotations_file
+        if 'collection_' in rel_path:
+            parts = rel_path.split(os.sep)
+            for part in parts:
+                if part.startswith('collection_'):
+                    try:
+                        collection_id = int(part.replace('collection_', ''))
+                        break
+                    except ValueError:
+                        pass
+        
+        if collection_id is None:
+            return jsonify({'success': False, 'error': '无法确定采集任务ID'}), 400
+        
+        # 读取并更新annotations.json文件
+        try:
+            annotations = load_annotations(collection_id)
+            
+            # 查找对应的条目
+            rel_video_path = get_relative_path(video_path) if video_path else None
+            found = False
+            
+            for ann in annotations:
+                ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                if (video_path and (paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path))) or \
+                   (not video_path and ann.get('result_data') is not None):
+                    # 添加验证状态
+                    verified_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    ann['verified'] = True
+                    ann['verified_at'] = verified_at
+                    found = True
+                    break
+            
+            if not found:
+                return jsonify({'success': False, 'error': '未找到对应的标注条目'}), 404
+            
+            # 保存更新后的标注文件
+            save_annotations_file(collection_id, annotations)
+            
+            logger.info(f"已更新annotations.json验证状态: {annotations_file}")
+        except Exception as e:
+            logger.error(f"更新annotations.json失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return jsonify({'success': False, 'error': f'更新标注文件失败: {str(e)}'}), 500
         
         # 记录操作日志
-        video_name = os.path.basename(history["annotations"][result_file].get("video_path", ""))
+        video_name = os.path.basename(video_path) if video_path else "未知视频"
         record_operation_log(
             'verify_annotation',
             f'验证标注: {video_name}',
             {
                 'result_file': result_file,
-                'video_path': history["annotations"][result_file].get("video_path"),
+                'video_path': video_path,
                 'video_name': video_name
             }
         )
@@ -1303,32 +1455,89 @@ def verify_annotation():
         return jsonify({'success': True, 'message': '标注已标记为已验证'})
     except Exception as e:
         logger.error(f"标记标注验证失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== 标注工具 API ====================
 @app.route('/pipeline_data.json')
 def get_pipeline_data():
-    """获取管道数据（记录查看历史）"""
+    """获取管道数据（从annotations.json读取单个视频的标注）"""
     try:
         # 检查是否有指定文件
         result_file = request.args.get('file', DATA_FILE)
+        video_path = request.args.get('video_path')  # 新增：视频路径参数
         
-        if not os.path.exists(result_file):
-            return jsonify({'error': '数据文件不存在'}), 404
+        # 处理文件路径（支持相对路径和绝对路径）
+        if result_file and result_file != DATA_FILE:
+            if os.path.isabs(result_file):
+                file_path = result_file
+            else:
+                file_path = os.path.join(PROJECT_ROOT, result_file)
+        else:
+            file_path = DATA_FILE
         
-        # 记录查看历史
-        record_annotation_view(result_file)
+        # 确保路径是有效的字符串
+        if not file_path or not isinstance(file_path, str):
+            return jsonify({'error': '无效的文件路径'}), 400
         
-        with open(result_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return jsonify(data)
+        # 检查是否是 annotations.json 文件
+        if file_path.endswith('annotations.json'):
+            # 从 annotations.json 读取单个视频的数据
+            # 从文件路径推断collection_id
+            collection_id = None
+            rel_path = os.path.relpath(file_path, PROJECT_ROOT) if not os.path.isabs(file_path) else file_path
+            if 'collection_' in rel_path:
+                parts = rel_path.split(os.sep)
+                for part in parts:
+                    if part.startswith('collection_'):
+                        try:
+                            collection_id = int(part.replace('collection_', ''))
+                            break
+                        except ValueError:
+                            pass
+            
+            if collection_id is None:
+                return jsonify({'error': '无法确定采集任务ID'}), 400
+            
+            # 加载标注文件
+            annotations = load_annotations(collection_id)
+            
+            if video_path:
+                # 返回指定视频的标注数据
+                rel_video_path = get_relative_path(video_path)
+                
+                # 查找对应的条目
+                for ann in annotations:
+                    ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                    if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                        return jsonify(ann)
+                
+                return jsonify({'error': '未找到对应的标注条目'}), 404
+            else:
+                # 返回第一个已完成的标注数据（兼容旧格式）
+                for ann in annotations:
+                    if ann.get('result_data') is not None:
+                        return jsonify(ann)
+                
+                return jsonify({'error': '没有已完成的标注'}), 404
+        else:
+            # 旧格式：直接读取文件
+            if not os.path.exists(file_path):
+                return jsonify({'error': f'数据文件不存在: {file_path}'}), 404
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return jsonify(data)
     except Exception as e:
         logger.error(f"加载数据失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/save_annotations', methods=['POST'])
 def save_annotations():
-    """保存标注结果"""
+    """保存标注结果（更新annotations.json中的单个条目）"""
     try:
         request_data = request.get_json()
         if not request_data:
@@ -1339,79 +1548,213 @@ def save_annotations():
             # 新格式：包含目标文件路径
             data = request_data['data']
             target_file = request_data.get('target_file')
+            video_path = request_data.get('video_path')  # 新增：视频路径参数
         else:
             # 旧格式：直接是数据，保存到默认文件
             data = request_data
             target_file = None
+            video_path = None
         
         # 确定保存的目标文件路径
         if target_file:
             # 如果指定了文件路径，保存到该文件
             # 处理相对路径和绝对路径
             if os.path.isabs(target_file):
-                save_file = target_file
+                annotations_file = target_file
             else:
                 # 相对路径，从项目根目录开始
-                save_file = os.path.join(PROJECT_ROOT, target_file)
+                annotations_file = os.path.join(PROJECT_ROOT, target_file)
         else:
             # 没有指定文件，保存到默认文件
-            save_file = DATA_FILE
+            annotations_file = DATA_FILE
         
-        # 确保目录存在
-        save_dir = os.path.dirname(save_file)
-        if save_dir and not os.path.exists(save_dir):
-            os.makedirs(save_dir, exist_ok=True)
+        # 检查是否是 annotations.json 文件
+        is_annotations_file = annotations_file.endswith('annotations.json')
         
-        # 创建备份（如果文件存在）
-        if os.path.exists(save_file):
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            backup_file = os.path.join(BACKUP_DIR, f'pipeline_data_backup_{timestamp}.json')
-            shutil.copy2(save_file, backup_file)
-            logger.info(f"创建备份文件: {backup_file}")
-        
-        # 保存到目标文件
-        with open(save_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"标注数据保存成功: {save_file}")
-        
-        # 同时保存一份带时间戳的副本到备份目录
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        annotated_file = os.path.join(BACKUP_DIR, f'annotated_data_{timestamp}.json')
-        with open(annotated_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        # 记录操作日志
-        video_name = os.path.basename(save_file)
-        record_operation_log(
-            'save_annotation',
-            f'保存标注: {video_name}',
-            {
-                'saved_file': save_file,
-                'backup_file': annotated_file
-            }
-        )
-        
-        return jsonify({
-            'success': True,
-            'message': '标注结果保存成功',
-            'saved_file': save_file,
-            'backup_file': annotated_file
-        })
+        if is_annotations_file:
+            # 更新 annotations.json 中的单个条目
+            # 从文件路径推断collection_id
+            collection_id = None
+            rel_path = os.path.relpath(annotations_file, PROJECT_ROOT) if not os.path.isabs(annotations_file) else annotations_file
+            if 'collection_' in rel_path:
+                parts = rel_path.split(os.sep)
+                for part in parts:
+                    if part.startswith('collection_'):
+                        try:
+                            collection_id = int(part.replace('collection_', ''))
+                            break
+                        except ValueError:
+                            pass
+            
+            if collection_id is None:
+                return jsonify({'error': '无法确定采集任务ID'}), 400
+            
+            # 加载标注文件
+            annotations = load_annotations(collection_id)
+            project_root = PROJECT_ROOT
+            
+            def get_relative_path(path):
+                """获取相对于项目根目录的路径"""
+                if not path:
+                    return path
+                try:
+                    abs_path = os.path.abspath(path)
+                    if abs_path.startswith(project_root):
+                        return os.path.relpath(abs_path, project_root)
+                    return path
+                except:
+                    return path
+            
+            # 查找对应的条目
+            ann_video_path = data.get('input_video_path') or data.get('video_path', '')
+            if video_path:
+                ann_video_path = video_path
+            
+            rel_video_path = get_relative_path(ann_video_path) if ann_video_path else None
+            found = False
+            
+            for ann in annotations:
+                existing_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                if (rel_video_path and (paths_match(existing_video_path, rel_video_path) or paths_match(existing_video_path, ann_video_path))) or \
+                   (not rel_video_path and ann.get('result_data') is not None):
+                    # 检查是否更新了result_data（核心标注数据）
+                    old_result_data = ann.get('result_data')
+                    new_result_data = data.get('result_data')
+                    result_data_changed = (old_result_data is not None and 
+                                          new_result_data is not None and 
+                                          old_result_data != new_result_data)
+                    
+                    # 更新条目
+                    ann.update({
+                        "input_video_path": rel_video_path or data.get('input_video_path'),
+                        "video_path": get_relative_path(data.get('video_path')),
+                        "audio_path": get_relative_path(data.get('audio_path')),
+                        "last_image_path": get_relative_path(data.get('last_image_path')),
+                        "last_image_path_absolute": data.get('last_image_path_absolute'),
+                        "video_description": data.get('video_description'),
+                        "result_data": new_result_data,
+                        "objects": data.get('objects', []),
+                        "image_dimensions": data.get('image_dimensions'),
+                        "verified": False if result_data_changed else ann.get('verified', False)  # 如果result_data被更新，重置验证状态
+                    })
+                    
+                    # 如果result_data被更新，清除验证时间戳
+                    if result_data_changed:
+                        ann.pop('verified_at', None)
+                    
+                    found = True
+                    break
+            
+            if not found:
+                return jsonify({'error': '未找到对应的标注条目'}), 404
+            
+            # 保存更新后的标注文件
+            save_annotations_file(collection_id, annotations)
+            
+            logger.info(f"标注数据保存成功: {annotations_file}")
+            
+            # 记录操作日志
+            video_name = os.path.basename(ann_video_path) if ann_video_path else "未知视频"
+            record_operation_log(
+                'save_annotation',
+                f'保存标注: {video_name}',
+                {
+                    'saved_file': annotations_file,
+                    'video_path': ann_video_path
+                }
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': '标注结果保存成功',
+                'saved_file': annotations_file
+            })
+        else:
+            # 旧格式：直接保存到文件
+            # 确保目录存在
+            save_dir = os.path.dirname(annotations_file)
+            if save_dir and not os.path.exists(save_dir):
+                os.makedirs(save_dir, exist_ok=True)
+            
+            # 直接保存到目标文件，不创建备份
+            with open(annotations_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"标注数据保存成功: {annotations_file}")
+            
+            # 记录操作日志
+            video_name = os.path.basename(annotations_file)
+            record_operation_log(
+                'save_annotation',
+                f'保存标注: {video_name}',
+                {
+                    'saved_file': annotations_file
+                }
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': '标注结果保存成功',
+                'saved_file': annotations_file
+            })
     except Exception as e:
         logger.error(f"保存标注数据失败: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/load_annotation/<filename>')
-def load_annotation(filename):
-    """加载指定的标注文件"""
+@app.route('/api/load_annotation/<path:filepath>')
+def load_annotation(filepath):
+    """加载指定的标注文件（从annotations.json读取单个视频的标注）"""
     try:
-        filepath = os.path.join(BACKUP_DIR, filename)
-        if not os.path.exists(filepath):
+        # 处理相对路径和绝对路径
+        if os.path.isabs(filepath):
+            annotations_file = filepath
+        else:
+            annotations_file = os.path.join(PROJECT_ROOT, filepath)
+        
+        if not os.path.exists(annotations_file):
             return jsonify({'error': '文件不存在'}), 404
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return jsonify(data)
+        
+        # 从文件路径推断collection_id
+        collection_id = None
+        rel_path = os.path.relpath(annotations_file, PROJECT_ROOT) if not os.path.isabs(annotations_file) else annotations_file
+        if 'collection_' in rel_path:
+            parts = rel_path.split(os.sep)
+            for part in parts:
+                if part.startswith('collection_'):
+                    try:
+                        collection_id = int(part.replace('collection_', ''))
+                        break
+                    except ValueError:
+                        pass
+        
+        if collection_id is None:
+            return jsonify({'error': '无法确定采集任务ID'}), 400
+        
+        # 检查是否有指定视频路径参数
+        video_path = request.args.get('video_path')
+        
+        # 加载标注文件
+        annotations = load_annotations(collection_id)
+        
+        if video_path:
+            # 返回指定视频的标注数据
+            rel_video_path = get_relative_path(video_path)
+            
+            # 查找对应的条目
+            for ann in annotations:
+                ann_video_path = ann.get('input_video_path') or ann.get('video_path', '')
+                if paths_match(ann_video_path, rel_video_path) or paths_match(ann_video_path, video_path):
+                    return jsonify(ann)
+            
+            return jsonify({'error': '未找到对应的标注条目'}), 404
+        else:
+            # 返回第一个已完成的标注数据（兼容旧格式）
+            for ann in annotations:
+                if ann.get('result_data') is not None:
+                    return jsonify(ann)
+            
+            return jsonify({'error': '没有已完成的标注'}), 404
+        
     except Exception as e:
         logger.error(f"加载标注文件失败: {e}")
         return jsonify({'error': str(e)}), 500

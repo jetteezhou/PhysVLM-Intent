@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhysVLM-Intent 统一工作流</title>
+    <title>数据统一工作流</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -705,7 +705,7 @@
                 ☰
             </button>
             <div>
-                <h1>🎯 PhysVLM-Intent 统一工作流</h1>
+                <h1>🎯 数据统一工作流</h1>
                 <p>数据采集 → 标注生成 → 人工检验标注</p>
             </div>
         </div>
@@ -1069,7 +1069,7 @@
         }
 
         // 开始Pipeline处理
-        async function startPipeline() {
+        async function startPipeline(processAll = false) {
             if (!selectedCollectionId) {
                 showStatus('请先选择采集任务', 'error');
                 return;
@@ -1082,19 +1082,31 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        collection_id: selectedCollectionId
+                        collection_id: selectedCollectionId,
+                        process_all: processAll
                     })
                 });
 
                 const data = await response.json();
                 
                 if (data.success) {
+                    // 检查是否有待处理的视频
+                    if (data.pending_videos === 0 || !data.task_id) {
+                        // 没有待处理的视频，显示后端返回的消息
+                        showStatus(data.message || '所有视频已完成标注，无需处理', 'info');
+                        // 刷新任务列表
+                        loadCollections();
+                        return;
+                    }
+                    
+                    // 有待处理的视频，启动处理
                     currentTaskId = data.task_id;
                     document.getElementById('progress-section').classList.add('active');
                     document.getElementById('start-pipeline-btn').disabled = true;
                     document.getElementById('log-container').innerHTML = '';
                     lastLogCount = 0; // 重置日志计数
-                    addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个视频`, 'info');
+                    const modeText = processAll ? '所有' : '未完成的';
+                    addLog('系统', `Pipeline已启动，将处理 ${data.total_videos} 个${modeText}视频`, 'info');
                     
                     // 开始轮询状态
                     pollPipelineStatus(data.task_id);
@@ -1230,9 +1242,9 @@
                 }
             });
             
-            // 监听iframe消息（标注验证完成）
+            // 监听iframe消息（标注验证完成或保存）
             window.addEventListener('message', async (event) => {
-                if (event.data && event.data.type === 'annotation_verified') {
+                if (event.data && (event.data.type === 'annotation_verified' || event.data.type === 'annotation_saved')) {
                     const resultFile = event.data.result_file;
                     
                     // 刷新标注任务列表
@@ -1252,8 +1264,26 @@
                                 currentAnnotationCollection = collection;
                                 displayAnnotationCollection(collection);
                                 
-                                // 自动打开下一个未验证的文件
-                                openNextUnverifiedAnnotation();
+                                // 如果是验证完成，自动打开下一个未验证的文件
+                                if (event.data.type === 'annotation_verified') {
+                                    openNextUnverifiedAnnotation();
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 通知标注检验页面的iframe刷新（无论标签页是否活动，都发送消息以确保数据同步）
+                    const annotationTab = document.getElementById('annotation-tab');
+                    if (annotationTab) {
+                        const annotationIframe = annotationTab.querySelector('iframe');
+                        if (annotationIframe && annotationIframe.contentWindow) {
+                            try {
+                                annotationIframe.contentWindow.postMessage({
+                                    type: 'refresh_annotation_list',
+                                    result_file: resultFile
+                                }, '*');
+                            } catch (e) {
+                                console.log('无法向标注检验iframe发送消息:', e);
                             }
                         }
                     }
@@ -1332,17 +1362,31 @@
                 </div>`;
             }).join('');
             
-            // 自动滚动到底部
-            container.scrollTop = container.scrollHeight;
+            // 自动滚动到顶部（最新记录在最上面）
+            // 方法1: 立即滚动到顶部
+            container.scrollTop = 0;
+            
+            // 方法2: 使用 requestAnimationFrame 确保DOM更新后滚动
+            requestAnimationFrame(() => {
+                container.scrollTop = 0;
+                // 方法3: 使用 setTimeout 作为备用，确保滚动执行
+                setTimeout(() => {
+                    container.scrollTop = 0;
+                }, 0);
+            });
         }
 
         // 打开标注工具模态框
         // 打开标注工具模态框（全局函数，供iframe调用）
-        window.openAnnotationModal = function(resultFile) {
+        window.openAnnotationModal = function(resultFile, videoPath) {
             const modal = document.getElementById('annotation-modal');
             const iframe = document.getElementById('annotation-iframe');
             if (modal && iframe) {
-                iframe.src = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
+                let url = `/tools/annotation/annotation_tool.html?file=${encodeURIComponent(resultFile)}`;
+                if (videoPath) {
+                    url += `&video_path=${encodeURIComponent(videoPath)}`;
+                }
+                iframe.src = url;
                 modal.classList.add('active');
                 // 阻止body滚动
                 document.body.style.overflow = 'hidden';

@@ -630,19 +630,24 @@
         async function loadData() {
             showLoading(true);
             try {
-                // 检查URL参数中是否有文件路径
+                // 检查URL参数中是否有文件路径和视频路径
                 const urlParams = new URLSearchParams(window.location.search);
                 const fileParam = urlParams.get('file');
+                const videoPathParam = urlParams.get('video_path');
                 
                 // 构建请求URL（使用绝对路径，兼容统一服务器）
                 let url = '/pipeline_data.json';
                 if (fileParam) {
                     url = `/pipeline_data.json?file=${encodeURIComponent(fileParam)}`;
+                    if (videoPathParam) {
+                        url += `&video_path=${encodeURIComponent(videoPathParam)}`;
+                    }
                 }
                 
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error('无法加载数据文件');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || '无法加载数据文件');
                 }
                 
                 pipelineData = await response.json();
@@ -652,9 +657,12 @@
                 const verifyBtn = document.getElementById('verify-btn');
                 if (fileParam && verifyBtn) {
                     verifyBtn.style.display = 'inline-block';
+                    // 确保resultFile被正确设置
                     verifyBtn.dataset.resultFile = fileParam;
+                    console.log('设置resultFile:', fileParam);
                 } else if (verifyBtn) {
                     verifyBtn.style.display = 'none';
+                    verifyBtn.dataset.resultFile = '';
                 }
                 
                 displayData();
@@ -946,14 +954,16 @@
             try {
                 showStatus('正在保存...', 'success');
                 
-                // 获取当前正在编辑的文件路径
+                // 获取当前正在编辑的文件路径和视频路径
                 const urlParams = new URLSearchParams(window.location.search);
                 const fileParam = urlParams.get('file');
+                const videoPathParam = urlParams.get('video_path');
                 
                 // 构建保存请求体，包含数据文件和目标文件路径
                 const saveData = {
                     data: pipelineData,
-                    target_file: fileParam || null  // 如果指定了文件，保存到该文件；否则保存到默认文件
+                    target_file: fileParam || null,  // 如果指定了文件，保存到该文件；否则保存到默认文件
+                    video_path: videoPathParam || pipelineData?.input_video_path || pipelineData?.video_path || null  // 传递视频路径
                 };
                 
                 // 这里可以发送到后端API保存
@@ -970,6 +980,19 @@
                     showStatus('标注结果保存成功！', 'success');
                     // 更新原始数据
                     originalData = JSON.parse(JSON.stringify(pipelineData));
+                    
+                    // 通知父页面刷新（如果在iframe中）
+                    if (window.parent !== window) {
+                        try {
+                            window.parent.postMessage({ 
+                                type: 'annotation_saved', 
+                                result_file: fileParam,
+                                video_path: videoPathParam || pipelineData?.input_video_path || pipelineData?.video_path || null
+                            }, '*');
+                        } catch (e) {
+                            console.log('无法通知父页面:', e);
+                        }
+                    }
                 } else {
                     const errorData = await response.json();
                     throw new Error(errorData.error || '保存失败');
@@ -996,10 +1019,18 @@
             const verifyBtn = document.getElementById('verify-btn');
             const resultFile = verifyBtn?.dataset.resultFile;
             
-            if (!resultFile) {
-                showStatus('无法获取文件路径', 'error');
+            console.log('验证按钮点击，resultFile:', resultFile);
+            
+            if (!resultFile || resultFile === '') {
+                showStatus('无法获取文件路径，请确保从标注验证工具打开', 'error');
+                console.error('resultFile为空:', resultFile);
                 return;
             }
+            
+            // 获取视频路径
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoPathParam = urlParams.get('video_path');
+            const videoPath = videoPathParam || pipelineData?.input_video_path || pipelineData?.video_path || null;
             
             try {
                 const response = await fetch('/api/annotation/verify', {
@@ -1008,7 +1039,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        result_file: resultFile
+                        result_file: resultFile,
+                        video_path: videoPath
                     })
                 });
                 
@@ -1027,6 +1059,7 @@
                     }
                 } else {
                     showStatus('标记验证失败: ' + data.error, 'error');
+                    console.error('验证失败:', data.error);
                 }
             } catch (error) {
                 showStatus('标记验证失败: ' + error.message, 'error');
