@@ -3,7 +3,7 @@ import os
 from typing import Optional
 
 # API配置 - 默认配置
-DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "sk-173e3ccde2ef4b42826a5f53b96155c2")
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "sk-xxx")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-proj-1234567890")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:8000/v1")
 
