@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易标注工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .header h1 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .config-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-item label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #495057;
+        }
+
+        .config-item input,
+        .config-item select {
+            padding: 10px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .config-item input:focus,
+        .config-item select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 320px 1fr 300px;
+            gap: 20px;
+        }
+
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 280px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .video-list-panel, .stats-panel {
+                max-height: 300px;
+            }
+        }
+
+        .video-list-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-list-panel h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .video-search {
+            margin-bottom: 15px;
+        }
+
+        .video-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .video-stats {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .stats-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .stats-panel h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+
+        .stat-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .shortcuts-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .shortcuts-panel h3 {
+            font-size: 1em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .shortcut-key {
+            background: #e1e8ed;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: 600;
+        }
+
+        .video-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .video-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .video-item.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #e7f0ff 0%, #d4e5ff 100%);
+        }
+
+        .video-item.annotated {
+            border-left: 4px solid #2ed573;
+        }
+
+        .video-item.unannotated {
+            border-left: 4px solid #ff4757;
+        }
+
+        .video-item-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .video-item-status {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .annotation-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .video-preview-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .video-preview-section h2 {
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+
+        .video-player-container {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-player {
+            width: 100%;
+            max-height: 400px;
+            display: block;
+        }
+
+        .video-controls-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .video-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .video-controls input[type="range"] {
+            flex: 1;
+        }
+
+        .asr-result-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0; /* 允许flex子元素收缩 */
+        }
+
+        .asr-result-section label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .asr-result-text {
+            min-height: 40px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e1e8ed;
+            color: #333;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .asr-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #667eea;
+        }
+
+        .spinner-small {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        .asr-error {
+            color: #dc3545;
+            font-size: 0.9em;
+        }
+
+        .image-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .image-section h2 {
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+
+        .image-container {
+            position: relative;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            overflow: auto;
+            background: #f8f9fa;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #last-frame-image {
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+        }
+
+        .point-marker {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .point-marker:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            z-index: 20;
+        }
+
+        .point-marker.selected {
+            transform: translate(-50%, -50%) scale(1.4);
+            border-width: 4px;
+            z-index: 20;
+        }
+
+        .point-marker.editing {
+            cursor: move;
+            border-width: 4px;
+            animation: editing-pulse 1.5s infinite;
+        }
+
+        @keyframes editing-pulse {
+            0%, 100% {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(102, 126, 234, 0.7);
+            }
+            50% {
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 8px rgba(102, 126, 234, 0);
+            }
+        }
+
+        .point-marker.dragging {
+            opacity: 0.8;
+            z-index: 30;
+        }
+
+        .point-marker.object-0 {
+            background-color: #ff4757;
+        }
+
+        .point-marker.object-1 {
+            background-color: #2ed573;
+        }
+
+        .point-marker.object-2 {
+            background-color: #3742fa;
+        }
+
+        .point-marker.object-3 {
+            background-color: #ffa502;
+        }
+
+        .point-marker.object-4 {
+            background-color: #5f27cd;
+        }
+
+        .point-marker.saved-marker {
+            opacity: 0.7;
+            border-width: 2px;
+        }
+
+        .point-marker.editing-marker {
+            opacity: 1;
+            border-width: 3px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+        }
+
+        .point-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            margin-top: -8px;
+        }
+
+        .objects-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .object-item {
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .object-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+        }
+
+        .object-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .object-item-name {
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .object-item-points {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-right: 10px;
+        }
+
+        .object-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            padding: 5px 10px;
+            font-size: 0.85em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-edit {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #ff4757;
+            color: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: none;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e8ed;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .status-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 简易标注工具</h1>
+            <div class="config-section">
+                <div class="config-item">
+                    <label>选择标注文件夹：</label>
+                    <input type="text" id="folder-path" placeholder="输入文件夹路径或点击浏览选择" />
+                    <input type="file" id="folder-selector" webkitdirectory directory multiple style="display: none;" />
+                </div>
+                <div class="config-item">
+                    <button class="btn btn-primary" onclick="selectFolder()">📁 浏览文件夹</button>
+                </div>
+                <div class="config-item">
+                    <label>任务指令模板：</label>
+                    <input type="text" id="task-template" placeholder="例如：把这个放到那个的右边" />
+                </div>
+                <div class="config-item">
+                    <label>场景：</label>
+                    <input type="text" id="scene" placeholder="例如：办公环境" />
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="loadVideos()">🔄 加载视频</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div id="status-message" class="status-message"></div>
+        </div>
+
+        <div class="main-content" id="main-content" style="display: none;">
+            <div class="video-list-panel">
+                <h2>📹 视频列表 <span id="video-count" style="font-size: 0.7em; color: #6c757d;"></span></h2>
+                <div class="video-search">
+                    <input type="text" id="video-search" placeholder="🔍 搜索视频..." oninput="filterVideos()" />
+                </div>
+                <div class="video-stats" id="video-stats"></div>
+                <div id="video-list"></div>
+            </div>
+
+            <div class="annotation-panel">
+                <div class="video-preview-section">
+                    <h2>🎬 视频预览</h2>
+                    <div class="video-player-container">
+                        <video id="video-player" class="video-player" controls></video>
+                    </div>
+                    <div class="video-controls-row">
+                        <div class="video-controls">
+                            <label>播放速度：</label>
+                            <select id="playback-speed" onchange="changePlaybackSpeed()">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1">1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5" selected>1.5x</option>
+                                <option value="2">2x</option>
+                            </select>
+                        </div>
+                        <div class="asr-result-section">
+                            <label>🎤 ASR识别结果：</label>
+                            <div id="asr-result" class="asr-result-text">
+                                <div class="asr-loading" id="asr-loading" style="display: none;">
+                                    <span class="spinner-small"></span>
+                                    <span>正在识别中...</span>
+                                </div>
+                                <div id="asr-text-content" style="display: none;"></div>
+                                <div id="asr-error" class="asr-error" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="image-section">
+                    <h2>🖼️ 最后一帧标注</h2>
+                    <div class="image-container" id="image-container">
+                        <img id="last-frame-image" src="" alt="最后一帧" />
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="addObject()">➕ 添加目标对象 (A)</button>
+                        <button class="btn btn-primary" onclick="addPlacementSpace()">📍 添加放置空间 (W)</button>
+                        <button class="btn btn-success" onclick="saveCurrentObject()">💾 保存目标 (S)</button>
+                        <button class="btn btn-warning" onclick="clearCurrentObject()">🗑️ 清除当前对象 (C)</button>
+                        <button class="btn btn-success" id="save-editing-btn" onclick="saveEditingObject()" style="display: none;">💾 保存编辑</button>
+                        <button class="btn btn-warning" id="cancel-editing-btn" onclick="cancelEditingObject()" style="display: none;">❌ 取消编辑 (Esc)</button>
+                        <button class="btn btn-success" onclick="saveAnnotations()">💾 保存标注 (Ctrl+S)</button>
+                        <button class="btn btn-warning" onclick="markAsInvalidVideo()" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">❌ 标记为无效视频</button>
+                    </div>
+                    <div class="objects-list" id="objects-list"></div>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h2>📊 统计信息</h2>
+                <div class="stat-item">
+                    <div class="stat-label">当前视频</div>
+                    <div class="stat-value" id="stat-current-video">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">已标注对象</div>
+                    <div class="stat-value" id="stat-objects-count">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">标注点总数</div>
+                    <div class="stat-value" id="stat-points-count">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">标注进度</div>
+                    <div class="stat-value" id="stat-progress">0%</div>
+                </div>
+                <div class="shortcuts-panel">
+                    <h3>⌨️ 快捷键</h3>
+                    <div class="shortcut-item">
+                        <span>保存标注</span>
+                        <span class="shortcut-key">Ctrl+S</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>添加对象</span>
+                        <span class="shortcut-key">A</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>保存当前对象</span>
+                        <span class="shortcut-key">S</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>清除当前对象</span>
+                        <span class="shortcut-key">C</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>删除选中点</span>
+                        <span class="shortcut-key">Delete</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>取消编辑</span>
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>撤销</span>
+                        <span class="shortcut-key">Ctrl+Z</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>重做</span>
+                        <span class="shortcut-key">Ctrl+Y</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在处理...</p>
+        </div>
+    </div>
+
+    <script>
+        let videos = [];
+        let filteredVideos = [];
+        let currentVideoIndex = -1;
+        let currentVideo = null;
+        let annotations = {};
+        let currentObjectIndex = -1;
+        let currentObjectPoints = [];
+        let currentObjectName = '';
+        let savedObjects = []; // 已保存的对象列表
+        let folderPath = '';
+        let selectedPointIndex = -1; // 当前选中的点索引
+        let selectedObjectIndex = -1; // 当前选中的对象索引（用于编辑模式）
+        let editingObjectIndex = -1; // 正在编辑的对象索引
+        let editingObjectPoints = []; // 正在编辑的对象点列表
+        let history = []; // 历史记录用于撤销/重做
+        let historyIndex = -1; // 当前历史记录索引
+        let autoSaveTimer = null; // 自动保存定时器
+        let draggedMarker = null; // 正在拖动的标记点
+        let dragOffset = { x: 0, y: 0 }; // 拖动偏移量
+        let currentASRResult = null; // 当前视频的ASR识别结果（包含sentence和words）
+        let currentObjectType = 'object'; // 当前对象的类型：'object' 或 'space'
+
+        // 初始化键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+S 保存标注
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveAnnotations();
+                return;
+            }
+            
+            // Ctrl+Z 撤销
+            if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+                return;
+            }
+            
+            // Ctrl+Y 或 Ctrl+Shift+Z 重做
+            if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+                e.preventDefault();
+                redo();
+                return;
+            }
+            
+            // 如果焦点在输入框，不处理其他快捷键
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // A 添加对象
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                addObject();
+                return;
+            }
+            
+            // W 添加放置空间
+            if (e.key === 'w' || e.key === 'W') {
+                e.preventDefault();
+                addPlacementSpace();
+                return;
+            }
+            
+            // S 保存当前对象
+            if (e.key === 's' || e.key === 'S') {
+                e.preventDefault();
+                saveCurrentObject();
+                return;
+            }
+            
+            // C 清除当前对象
+            if (e.key === 'c' || e.key === 'C') {
+                e.preventDefault();
+                clearCurrentObject();
+                return;
+            }
+            
+            // Delete 删除选中的点
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                if (selectedPointIndex >= 0) {
+                    deleteSelectedPoint();
+                }
+                return;
+            }
+            
+            // Escape 取消编辑模式
+            if (e.key === 'Escape') {
+                if (editingObjectIndex >= 0) {
+                    cancelEditingObject();
+                }
+                return;
+            }
+        });
+
+        // 保存历史状态
+        function saveHistory() {
+            const state = {
+                savedObjects: JSON.parse(JSON.stringify(savedObjects)),
+                currentObjectPoints: JSON.parse(JSON.stringify(currentObjectPoints)),
+                currentObjectIndex: currentObjectIndex,
+                currentObjectName: currentObjectName,
+                currentObjectType: currentObjectType  // 保存对象类型
+            };
+            
+            // 删除当前位置之后的历史记录
+            history = history.slice(0, historyIndex + 1);
+            history.push(state);
+            historyIndex = history.length - 1;
+            
+            // 限制历史记录数量
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+        }
+
+        // 撤销
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const state = history[historyIndex];
+                restoreState(state);
+                showStatus('已撤销', 'success');
+            } else {
+                showStatus('没有可撤销的操作', 'error');
+            }
+        }
+
+        // 重做
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                const state = history[historyIndex];
+                restoreState(state);
+                showStatus('已重做', 'success');
+            } else {
+                showStatus('没有可重做的操作', 'error');
+            }
+        }
+
+        // 恢复状态
+        function restoreState(state) {
+            savedObjects = JSON.parse(JSON.stringify(state.savedObjects));
+            currentObjectPoints = JSON.parse(JSON.stringify(state.currentObjectPoints));
+            currentObjectIndex = state.currentObjectIndex;
+            currentObjectName = state.currentObjectName;
+            currentObjectType = state.currentObjectType || 'object'; // 恢复对象类型
+            
+            // 重新渲染
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            currentObjectPoints.forEach((point, idx) => {
+                createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+            });
+            
+            updateObjectsList();
+            updateStats();
+        }
+
+        // 选择文件夹
+        function selectFolder() {
+            const folderSelector = document.getElementById('folder-selector');
+            folderSelector.click();
+        }
+
+        // 处理文件夹选择
+        document.getElementById('folder-selector').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                // 从第一个文件的路径中提取文件夹路径
+                const firstFile = files[0];
+                let folderPathValue = '';
+                
+                if (firstFile.webkitRelativePath) {
+                    // 提取文件夹名称（相对路径的第一部分）
+                    const relativePath = firstFile.webkitRelativePath;
+                    const folderName = relativePath.split('/')[0];
+                    
+                    // 显示提示，让用户输入完整路径
+                    // 如果用户知道路径，可以直接输入；否则可以输入文件夹名称，服务器会尝试查找
+                    folderPathValue = prompt(
+                        '已选择文件夹: ' + folderName + '\n\n请输入文件夹的完整路径（例如: /Users/username/Documents/folder）：\n\n提示：如果路径中包含空格或特殊字符，请确保正确输入。',
+                        folderName
+                    );
+                } else {
+                    // 如果没有webkitRelativePath，提示用户手动输入
+                    folderPathValue = prompt('请输入文件夹的完整路径：');
+                }
+                
+                if (folderPathValue && folderPathValue.trim()) {
+                    folderPathValue = folderPathValue.trim();
+                    document.getElementById('folder-path').value = folderPathValue;
+                    folderPath = folderPathValue;
+                    showStatus('已选择文件夹: ' + folderPathValue, 'success');
+                }
+                
+                // 清空选择，以便下次可以重新选择
+                e.target.value = '';
+            }
+        });
+
+        // 过滤视频
+        function filterVideos() {
+            const searchTerm = document.getElementById('video-search').value.toLowerCase();
+            filteredVideos = videos.filter(video => 
+                video.name.toLowerCase().includes(searchTerm)
+            );
+            displayVideoList();
+        }
+
+        // 加载视频列表
+        async function loadVideos() {
+            folderPath = document.getElementById('folder-path').value.trim();
+            if (!folderPath) {
+                showStatus('请先选择文件夹', 'error');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const response = await fetch('/api/simple_annotation/scan_videos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ folder_path: folderPath })
+                });
+
+                if (!response.ok) {
+                    throw new Error('加载视频列表失败');
+                }
+
+                const data = await response.json();
+                videos = data.videos || [];
+                filteredVideos = [...videos];
+                
+                // 加载已有的标注数据
+                await loadAnnotations();
+
+                displayVideoList();
+                updateProgress();
+                showLoading(false);
+                showStatus(`成功加载 ${videos.length} 个视频`, 'success');
+                
+                // 自动加载第一个未标注的视频（跳过无效视频）
+                if (videos.length > 0) {
+                    // 查找第一个未标注且非无效的视频
+                    for (let i = 0; i < videos.length; i++) {
+                        const video = videos[i];
+                        const annotationKey = `${folderPath}|${video.name}`;
+                        const annotation = annotations[annotationKey];
+                        const isInvalid = annotation && annotation.is_invalid === true;
+                        const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                        const isAnnotated = objectSpaceList.length > 0;
+                        
+                        // 跳过无效视频和已标注的视频
+                        if (!isInvalid && !isAnnotated) {
+                            // 延迟一下再选择，确保UI已更新
+                            setTimeout(() => {
+                                selectVideo(i);
+                            }, 300);
+                            break;
+                        }
+                    }
+                }
+            } catch (error) {
+                showLoading(false);
+                showStatus('加载失败: ' + error.message, 'error');
+            }
+        }
+
+        // 加载标注数据
+        async function loadAnnotations() {
+            try {
+                const response = await fetch('/api/simple_annotation/load_annotations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ folder_path: folderPath })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    annotations = data.annotations || {};
+                }
+            } catch (error) {
+                console.error('加载标注数据失败:', error);
+            }
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            if (videos.length === 0) {
+                document.getElementById('progress-fill').style.width = '0%';
+                return;
+            }
+            
+            let annotatedCount = 0;
+            videos.forEach(video => {
+                const annotationKey = `${folderPath}|${video.name}`;
+                const annotation = annotations[annotationKey];
+                const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                const isAnnotated = objectSpaceList.length > 0;
+                if (isAnnotated) annotatedCount++;
+            });
+            
+            const progress = (annotatedCount / videos.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            if (currentVideo) {
+                document.getElementById('stat-current-video').textContent = currentVideo.name;
+            } else {
+                document.getElementById('stat-current-video').textContent = '-';
+            }
+            
+            const totalObjects = savedObjects.length;
+            const totalPoints = savedObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
+                               currentObjectPoints.length;
+            
+            document.getElementById('stat-objects-count').textContent = totalObjects;
+            document.getElementById('stat-points-count').textContent = totalPoints;
+            
+            // 更新视频统计
+            if (videos.length > 0) {
+                let annotatedCount = 0;
+                videos.forEach(video => {
+                    const annotationKey = `${folderPath}|${video.name}`;
+                    const annotation = annotations[annotationKey];
+                    const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                    const isAnnotated = objectSpaceList.length > 0;
+                    if (isAnnotated) annotatedCount++;
+                });
+                
+                const progressPercent = Math.round((annotatedCount / videos.length) * 100);
+                document.getElementById('stat-progress').textContent = `${progressPercent}%`;
+                
+                document.getElementById('video-stats').innerHTML = `
+                    <div>总计: ${videos.length} 个视频</div>
+                    <div>已标注: ${annotatedCount} 个</div>
+                    <div>未标注: ${videos.length - annotatedCount} 个</div>
+                `;
+                
+                document.getElementById('video-count').textContent = `(${filteredVideos.length}/${videos.length})`;
+            }
+        }
+
+        // 显示视频列表
+        function displayVideoList() {
+            const container = document.getElementById('video-list');
+            container.innerHTML = '';
+
+            filteredVideos.forEach((video, index) => {
+                // 找到原始索引
+                const originalIndex = videos.findIndex(v => v.name === video.name);
+                const videoItem = document.createElement('div');
+                videoItem.className = 'video-item';
+                if (originalIndex === currentVideoIndex) {
+                    videoItem.classList.add('active');
+                }
+                
+                const annotationKey = `${folderPath}|${video.name}`;
+                const annotation = annotations[annotationKey];
+                const isInvalid = annotation && annotation.is_invalid === true;
+                const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                const isAnnotated = objectSpaceList.length > 0;
+                
+                if (isInvalid) {
+                    videoItem.classList.add('invalid');
+                    videoItem.style.borderLeft = '4px solid #ff6b6b';
+                } else if (isAnnotated) {
+                    videoItem.classList.add('annotated');
+                } else {
+                    videoItem.classList.add('unannotated');
+                }
+
+                let statusText = '';
+                if (isInvalid) {
+                    statusText = '❌ 无效视频';
+                } else if (isAnnotated) {
+                    statusText = '✓ 已标注';
+                } else {
+                    statusText = '○ 未标注';
+                }
+
+                videoItem.innerHTML = `
+                    <div class="video-item-name">${video.name}</div>
+                    <div class="video-item-status">${statusText}</div>
+                `;
+
+                videoItem.addEventListener('click', () => {
+                    selectVideo(originalIndex);
+                });
+
+                container.appendChild(videoItem);
+            });
+
+            document.getElementById('main-content').style.display = 'grid';
+            updateStats();
+        }
+
+        // 选择视频
+        async function selectVideo(index) {
+            if (index < 0 || index >= videos.length) return;
+
+            currentVideoIndex = index;
+            currentVideo = videos[index];
+            currentObjectIndex = -1;
+            currentObjectPoints = [];
+            currentObjectName = '';
+            currentObjectType = 'object'; // 重置对象类型
+            savedObjects = []; // 重置已保存对象列表
+            selectedPointIndex = -1;
+            editingObjectIndex = -1;
+            editingObjectPoints = [];
+            history = [];
+            historyIndex = -1;
+            currentASRResult = null; // 重置ASR结果
+            
+            // 隐藏编辑按钮
+            document.getElementById('save-editing-btn').style.display = 'none';
+            document.getElementById('cancel-editing-btn').style.display = 'none';
+
+            console.log(`[标注交互] 选择视频`, {
+                video_index: index,
+                video_name: currentVideo.name,
+                video_path: currentVideo.path,
+                timestamp: new Date().toISOString()
+            });
+
+            displayVideoList();
+
+            showLoading(true);
+            try {
+                // 加载视频和最后一帧
+                const response = await fetch('/api/simple_annotation/get_video_info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        video_name: currentVideo.name
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    // 尝试获取后端返回的详细错误信息
+                    const errorMsg = data.error || '加载视频信息失败';
+                    console.error('[标注交互] 加载视频信息失败:', errorMsg, data);
+                    throw new Error(errorMsg);
+                }
+                
+                // 设置视频播放器
+                const videoPlayer = document.getElementById('video-player');
+                videoPlayer.src = data.video_url;
+                // 设置默认播放速度为1.5倍速
+                videoPlayer.playbackRate = 1.5;
+                
+                // 设置最后一帧图像
+                const lastFrameImage = document.getElementById('last-frame-image');
+                lastFrameImage.src = data.last_frame_url;
+                lastFrameImage.onload = () => {
+                    // 重新设置点击事件处理（清除之前的监听器）
+                    const imageContainer = document.getElementById('image-container');
+                    // 移除所有旧的标记点
+                    const oldMarkers = imageContainer.querySelectorAll('.point-marker');
+                    oldMarkers.forEach(marker => marker.remove());
+                    
+                    // 先清空所有状态，再加载标注
+                    currentObjectIndex = -1;
+                    currentObjectPoints = [];
+                    currentObjectName = '';
+                    currentObjectType = 'object';
+                    savedObjects = [];
+                    editingObjectIndex = -1;
+                    editingObjectPoints = [];
+                    selectedPointIndex = -1;
+                    
+                    setupImageClickHandler();
+                    loadVideoAnnotations();
+                    
+                    // 图像尺寸变化时重新渲染标记点
+                    const resizeHandler = function() {
+                        const markers = imageContainer.querySelectorAll('.point-marker');
+                        markers.forEach(marker => marker.remove());
+                        
+                        // 如果正在编辑对象，需要重新计算编辑点的位置
+                        if (editingObjectIndex >= 0) {
+                            const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
+                            const containerRect = imageContainer.getBoundingClientRect();
+                            const imageOffsetX = (containerRect.width - imageRect.width) / 2;
+                            const imageOffsetY = (containerRect.height - imageRect.height) / 2;
+                            
+                            // 更新编辑点的显示位置
+                            editingObjectPoints.forEach(point => {
+                                point.displayX = point.x * imageRect.width + imageOffsetX;
+                                point.displayY = point.y * imageRect.height + imageOffsetY;
+                            });
+                            
+                            // 重新渲染所有对象
+                            savedObjects.forEach((savedObj, objIdx) => {
+                                if (objIdx !== editingObjectIndex) {
+                                    savedObj.points.forEach((point, pointIdx) => {
+                                        const normalizedX = point[1] / 1000;
+                                        const normalizedY = point[0] / 1000;
+                                        const displayX = normalizedX * imageRect.width + imageOffsetX;
+                                        const displayY = normalizedY * imageRect.height + imageOffsetY;
+                                        
+                                        createPointMarker(
+                                            { displayX, displayY },
+                                            objIdx,
+                                            true,
+                                            savedObj.name,
+                                            pointIdx,
+                                            false
+                                        );
+                                    });
+                                }
+                            });
+                            
+                            // 渲染编辑对象的点
+                            const obj = savedObjects[editingObjectIndex];
+                            editingObjectPoints.forEach((point, idx) => {
+                                createPointMarker(point, editingObjectIndex, false, obj.name, idx, true);
+                            });
+                        } else {
+                            renderSavedObjects();
+                        }
+                        
+                        // 重新渲染当前编辑的点
+                        currentObjectPoints.forEach((point, idx) => {
+                            createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+                        });
+                    };
+                    
+                    // 移除旧的resize监听器（如果存在）
+                    window.removeEventListener('resize', resizeHandler);
+                    window.addEventListener('resize', resizeHandler);
+                };
+
+                showLoading(false);
+                updateStats();
+                
+                // 自动进行ASR识别
+                performASRRecognition();
+            } catch (error) {
+                showLoading(false);
+                showStatus('加载视频失败: ' + error.message, 'error');
+            }
+        }
+
+        // 执行ASR识别
+        async function performASRRecognition() {
+            if (!currentVideo || !folderPath) {
+                return;
+            }
+
+            // 显示加载状态
+            document.getElementById('asr-loading').style.display = 'flex';
+            document.getElementById('asr-text-content').style.display = 'none';
+            document.getElementById('asr-error').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/simple_annotation/asr_recognition', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        video_name: currentVideo.name
+                    })
+                });
+
+                const data = await response.json();
+
+                // 隐藏加载状态
+                document.getElementById('asr-loading').style.display = 'none';
+
+                if (data.success && data.text && data.text.trim()) {
+                    // 保存完整的ASR结果（包括句子级别和词汇级别）
+                    currentASRResult = {
+                        sentence: data.sentence || { text: data.text },
+                        words: data.words || []
+                    };
+                    
+                    // 显示识别结果（只显示完整句子）
+                    document.getElementById('asr-text-content').textContent = data.text;
+                    document.getElementById('asr-text-content').style.display = 'block';
+                    document.getElementById('asr-error').style.display = 'none';
+                } else {
+                    // ASR识别失败或为空，显示友好提示而不是错误
+                    const errorMsg = data.error || '未识别到语音内容';
+                    document.getElementById('asr-error').textContent = '⚠️ ' + errorMsg;
+                    document.getElementById('asr-error').style.display = 'block';
+                    document.getElementById('asr-text-content').style.display = 'none';
+                    currentASRResult = null;
+                }
+            } catch (error) {
+                // 隐藏加载状态
+                document.getElementById('asr-loading').style.display = 'none';
+                // ASR识别失败，显示友好提示而不是错误
+                document.getElementById('asr-error').textContent = '⚠️ ASR识别失败: ' + error.message;
+                document.getElementById('asr-error').style.display = 'block';
+                document.getElementById('asr-text-content').style.display = 'none';
+                currentASRResult = null;
+            }
+        }
+
+        // 设置图像点击处理
+        function setupImageClickHandler() {
+            const imageContainer = document.getElementById('image-container');
+            const lastFrameImage = document.getElementById('last-frame-image');
+            
+            // 移除旧的监听器（如果存在）
+            const newHandler = (e) => {
+                // 如果正在编辑已保存的对象，不允许添加新点
+                if (editingObjectIndex >= 0) {
+                    showStatus('正在编辑对象，请先保存或取消编辑', 'error');
+                    return;
+                }
+                
+                if (currentObjectIndex === -1) {
+                    showStatus('请先点击"添加目标对象"按钮', 'error');
+                    return;
+                }
+
+                const rect = imageContainer.getBoundingClientRect();
+                const imageRect = lastFrameImage.getBoundingClientRect();
+                
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                
+                // 计算相对于图像的坐标
+                const imageOffsetX = (rect.width - imageRect.width) / 2;
+                const imageOffsetY = (rect.height - imageRect.height) / 2;
+                
+                const relativeX = clickX - imageOffsetX;
+                const relativeY = clickY - imageOffsetY;
+                
+                // 检查点击是否在图像范围内
+                if (relativeX < 0 || relativeX > imageRect.width || 
+                    relativeY < 0 || relativeY > imageRect.height) {
+                    return;
+                }
+
+                // 转换为归一化坐标 (0-1)
+                const normalizedX = relativeX / imageRect.width;
+                const normalizedY = relativeY / imageRect.height;
+
+                // 添加点
+                addPoint(normalizedX, normalizedY, clickX, clickY);
+            };
+            
+            // 移除旧的监听器并添加新的
+            imageContainer.removeEventListener('click', imageContainer._clickHandler);
+            imageContainer._clickHandler = newHandler;
+            imageContainer.addEventListener('click', newHandler);
+        }
+
+        // 添加点
+        function addPoint(normalizedX, normalizedY, displayX, displayY) {
+            const point = {
+                x: normalizedX,
+                y: normalizedY,
+                displayX: displayX,
+                displayY: displayY
+            };
+
+            saveHistory();
+            currentObjectPoints.push(point);
+            createPointMarker(point, currentObjectIndex, false, currentObjectName, currentObjectPoints.length - 1);
+            updateObjectsList();
+            updateStats();
+            
+            // 打印标注交互信息
+            console.log(`[标注交互] 添加标注点`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                object_name: currentObjectName,
+                point_index: currentObjectPoints.length - 1,
+                normalized_coords: {x: normalizedX, y: normalizedY},
+                pixel_coords: {x: Math.round(normalizedX * 1000), y: Math.round(normalizedY * 1000)},
+                total_points: currentObjectPoints.length,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // 创建点标记
+        function createPointMarker(point, objectIndex, isSaved = false, objectName = null, pointIndex = -1, isEditingMode = false) {
+            const imageContainer = document.getElementById('image-container');
+            const marker = document.createElement('div');
+            marker.className = `point-marker object-${objectIndex % 5}`;
+            if (isSaved && !isEditingMode) {
+                marker.classList.add('saved-marker'); // 添加已保存标记的样式类
+            } else {
+                marker.classList.add('editing-marker'); // 添加正在编辑标记的样式类
+            }
+            
+            // 如果是编辑模式，添加editing类
+            if (isEditingMode) {
+                marker.classList.add('editing');
+            }
+            
+            marker.style.left = point.displayX + 'px';
+            marker.style.top = point.displayY + 'px';
+            marker.dataset.pointIndex = pointIndex;
+            marker.dataset.objectIndex = objectIndex;
+            marker.dataset.isSaved = isSaved;
+            marker.dataset.isEditing = isEditingMode;
+            
+            // 添加点击事件选择点
+            marker.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 在编辑模式下也可以选择点（用于删除）
+                selectPoint(marker, pointIndex, objectIndex, isSaved || isEditingMode);
+            });
+            
+            // 如果是编辑模式，添加拖动功能
+            if (isEditingMode) {
+                marker.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    startDrag(marker, e, pointIndex);
+                });
+            }
+            
+            const label = document.createElement('div');
+            label.className = 'point-label';
+            label.textContent = objectName || currentObjectName || `对象${objectIndex + 1}`;
+            marker.appendChild(label);
+
+            imageContainer.appendChild(marker);
+        }
+
+        // 开始拖动
+        function startDrag(marker, e, pointIndex) {
+            draggedMarker = marker;
+            selectedPointIndex = pointIndex;
+            
+            const rect = marker.getBoundingClientRect();
+            const imageContainer = document.getElementById('image-container');
+            const containerRect = imageContainer.getBoundingClientRect();
+            
+            dragOffset.x = e.clientX - containerRect.left - parseFloat(marker.style.left);
+            dragOffset.y = e.clientY - containerRect.top - parseFloat(marker.style.top);
+            
+            marker.classList.add('dragging');
+            
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            
+            e.preventDefault();
+        }
+
+        // 拖动中
+        function onDrag(e) {
+            if (!draggedMarker) return;
+            
+            const imageContainer = document.getElementById('image-container');
+            const containerRect = imageContainer.getBoundingClientRect();
+            const lastFrameImage = document.getElementById('last-frame-image');
+            const imageRect = lastFrameImage.getBoundingClientRect();
+            
+            const imageOffsetX = (containerRect.width - imageRect.width) / 2;
+            const imageOffsetY = (containerRect.height - imageRect.height) / 2;
+            
+            let newX = e.clientX - containerRect.left - dragOffset.x;
+            let newY = e.clientY - containerRect.top - dragOffset.y;
+            
+            // 限制在图像范围内
+            newX = Math.max(imageOffsetX, Math.min(newX, imageOffsetX + imageRect.width));
+            newY = Math.max(imageOffsetY, Math.min(newY, imageOffsetY + imageRect.height));
+            
+            draggedMarker.style.left = newX + 'px';
+            draggedMarker.style.top = newY + 'px';
+            
+            // 更新对应的点数据
+            const pointIndex = parseInt(draggedMarker.dataset.pointIndex);
+            const objectIndex = parseInt(draggedMarker.dataset.objectIndex);
+            
+            if (editingObjectIndex >= 0 && editingObjectPoints[pointIndex]) {
+                // 计算归一化坐标
+                const relativeX = newX - imageOffsetX;
+                const relativeY = newY - imageOffsetY;
+                const normalizedX = relativeX / imageRect.width;
+                const normalizedY = relativeY / imageRect.height;
+                
+                editingObjectPoints[pointIndex].x = normalizedX;
+                editingObjectPoints[pointIndex].y = normalizedY;
+                editingObjectPoints[pointIndex].displayX = newX;
+                editingObjectPoints[pointIndex].displayY = newY;
+            }
+        }
+
+        // 停止拖动
+        function stopDrag() {
+            if (draggedMarker) {
+                draggedMarker.classList.remove('dragging');
+                draggedMarker = null;
+            }
+            
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        // 选择点
+        function selectPoint(marker, pointIndex, objectIndex, isSaved) {
+            // 清除之前的选择
+            document.querySelectorAll('.point-marker.selected').forEach(m => {
+                m.classList.remove('selected');
+            });
+            
+            // 选中当前点
+            marker.classList.add('selected');
+            selectedPointIndex = pointIndex;
+            
+            // 如果是已保存的点，需要找到对应的对象和点
+            if (isSaved) {
+                // 可以在这里添加编辑已保存点的功能
+            }
+        }
+
+        // 删除选中的点
+        function deleteSelectedPoint() {
+            // 如果在编辑模式下，删除编辑对象的点
+            if (editingObjectIndex >= 0 && selectedPointIndex >= 0) {
+                saveHistory();
+                
+                // 移除标记
+                const markers = document.querySelectorAll('.point-marker.selected');
+                markers.forEach(marker => marker.remove());
+                
+                // 从编辑点数组中删除
+                editingObjectPoints.splice(selectedPointIndex, 1);
+                selectedPointIndex = -1;
+                
+                // 重新渲染编辑对象的点
+                const imageContainer = document.getElementById('image-container');
+                const editingMarkers = imageContainer.querySelectorAll('.point-marker.editing');
+                editingMarkers.forEach(marker => marker.remove());
+                
+                const obj = savedObjects[editingObjectIndex];
+                editingObjectPoints.forEach((point, idx) => {
+                    createPointMarker(point, editingObjectIndex, false, obj.name, idx, true);
+                });
+                
+                updateObjectsList();
+                updateStats();
+                showStatus('已删除选中点', 'success');
+                return;
+            }
+            
+            // 否则删除当前编辑对象的点
+            if (selectedPointIndex < 0 || currentObjectIndex < 0) {
+                return;
+            }
+            
+            saveHistory();
+            
+            // 移除标记
+            const markers = document.querySelectorAll('.point-marker.selected');
+            markers.forEach(marker => marker.remove());
+            
+            // 从数组中删除点
+            currentObjectPoints.splice(selectedPointIndex, 1);
+            selectedPointIndex = -1;
+            
+            // 重新渲染当前对象的点
+            const imageContainer = document.getElementById('image-container');
+            const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
+            editingMarkers.forEach(marker => marker.remove());
+            
+            currentObjectPoints.forEach((point, idx) => {
+                createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+            });
+            
+            updateObjectsList();
+            updateStats();
+            showStatus('已删除选中点', 'success');
+        }
+
+        // 添加目标对象
+        function addObject() {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            // 弹出输入框让用户输入类别
+            const category = prompt('请输入对象类别（例如：杯子、书本、鼠标等）：');
+            if (category === null || category.trim() === '') {
+                return; // 用户取消或输入为空
+            }
+            
+            // 计算新的对象索引（包括已保存的对象）
+            currentObjectIndex = savedObjects.length;
+            currentObjectPoints = [];
+            currentObjectName = category.trim();
+            currentObjectType = 'object'; // 设置为对象类型
+            selectedPointIndex = -1;
+            
+            saveHistory();
+            
+            console.log(`[标注交互] 添加新对象`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                category: currentObjectName,
+                type: currentObjectType,
+                saved_objects_count: savedObjects.length,
+                timestamp: new Date().toISOString()
+            });
+            
+            showStatus(`已添加目标对象: ${currentObjectName}，请在图像上点击标注点`, 'success');
+            updateObjectsList();
+        }
+
+        // 添加放置空间
+        function addPlacementSpace() {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            // 弹出输入框让用户输入放置空间类别
+            const category = prompt('请输入放置空间类别（例如：黑色笔的右边等）：');
+            if (category === null || category.trim() === '') {
+                return; // 用户取消或输入为空
+            }
+            
+            // 计算新的对象索引（包括已保存的对象）
+            currentObjectIndex = savedObjects.length;
+            currentObjectPoints = [];
+            currentObjectName = category.trim();
+            currentObjectType = 'space'; // 设置为放置空间类型
+            selectedPointIndex = -1;
+            
+            saveHistory();
+            
+            console.log(`[标注交互] 添加放置空间`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                category: currentObjectName,
+                type: currentObjectType,
+                saved_objects_count: savedObjects.length,
+                timestamp: new Date().toISOString()
+            });
+            
+            showStatus(`已添加放置空间: ${currentObjectName}，请在图像上点击标注点`, 'success');
+            updateObjectsList();
+        }
+
+        // 保存当前目标对象
+        function saveCurrentObject() {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            if (currentObjectIndex === -1 || currentObjectPoints.length === 0) {
+                showStatus('请先添加目标对象并标注点', 'error');
+                return;
+            }
+
+            // 构建当前对象数据
+            const points = currentObjectPoints.map(p => [
+                Math.round(p.y * 1000),  // y坐标 (0-1000)
+                Math.round(p.x * 1000)   // x坐标 (0-1000)
+            ]);
+
+            const objectData = {
+                name: currentObjectName,
+                points: points,
+                type: currentObjectType  // 添加类型字段：'object' 或 'space'
+            };
+
+            saveHistory();
+            
+            // 添加到已保存对象列表
+            savedObjects.push(objectData);
+
+            console.log(`[标注交互] 保存目标对象`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                object_name: currentObjectName,
+                points_count: points.length,
+                total_saved_objects: savedObjects.length,
+                timestamp: new Date().toISOString()
+            });
+
+            // 重新渲染所有标记点（包括刚保存的）
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            
+            // 重置当前编辑对象
+            currentObjectIndex = -1;
+            currentObjectPoints = [];
+            currentObjectName = '';
+            currentObjectType = 'object'; // 重置对象类型
+            selectedPointIndex = -1;
+            
+            updateObjectsList();
+            updateStats();
+            showStatus(`目标对象 "${objectData.name}" 已保存！可以继续添加新目标`, 'success');
+            
+            // 自动保存
+            scheduleAutoSave();
+        }
+
+        // 清除当前对象
+        function clearCurrentObject() {
+            if (currentObjectIndex === -1) {
+                showStatus('没有当前对象', 'error');
+                return;
+            }
+
+            console.log(`[标注交互] 清除当前对象`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                object_name: currentObjectName,
+                cleared_points: currentObjectPoints.length,
+                timestamp: new Date().toISOString()
+            });
+
+            // 移除当前对象的标记点（只移除当前正在编辑的点）
+            const imageContainer = document.getElementById('image-container');
+            // 找到所有正在编辑的标记点（editing-marker类），移除它们
+            const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
+            editingMarkers.forEach(marker => {
+                // 检查这个标记点是否属于当前编辑的对象（通过检查位置）
+                const markerX = parseFloat(marker.style.left);
+                const markerY = parseFloat(marker.style.top);
+                
+                // 检查是否与当前对象的点匹配
+                const isCurrentObjectPoint = currentObjectPoints.some(p => {
+                    const expectedX = p.displayX;
+                    const expectedY = p.displayY;
+                    return Math.abs(markerX - expectedX) < 5 && Math.abs(markerY - expectedY) < 5;
+                });
+                
+                if (isCurrentObjectPoint) {
+                    marker.remove();
+                }
+            });
+
+            saveHistory();
+            currentObjectPoints = [];
+            currentObjectName = '';
+            currentObjectType = 'object'; // 重置对象类型
+            selectedPointIndex = -1;
+            updateObjectsList();
+            updateStats();
+            showStatus('已清除当前对象', 'success');
+        }
+
+        // 删除对象
+        function deleteObject(index) {
+            if (!confirm(`确定要删除对象 "${savedObjects[index].name}" 吗？`)) {
+                return;
+            }
+            
+            // 如果正在编辑该对象，先取消编辑
+            if (editingObjectIndex === index) {
+                cancelEditingObject();
+            }
+            
+            saveHistory();
+            savedObjects.splice(index, 1);
+            
+            // 重新渲染
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
+                currentObjectPoints.forEach((point, idx) => {
+                    createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+                });
+            }
+            
+            updateObjectsList();
+            updateStats();
+            showStatus('已删除对象', 'success');
+            
+            // 自动保存
+            scheduleAutoSave();
+        }
+
+        // 编辑对象（激活点的编辑模式）
+        function editObject(index) {
+            if (editingObjectIndex >= 0 && editingObjectIndex !== index) {
+                if (!confirm('正在编辑其他对象，是否保存当前编辑？')) {
+                    saveEditingObject();
+                } else {
+                    cancelEditingObject();
+                }
+            }
+            
+            editingObjectIndex = index;
+            const obj = savedObjects[index];
+            
+            // 将对象点转换为可编辑格式
+            const imageContainer = document.getElementById('image-container');
+            const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
+            const containerRect = imageContainer.getBoundingClientRect();
+            const imageOffsetX = (containerRect.width - imageRect.width) / 2;
+            const imageOffsetY = (containerRect.height - imageRect.height) / 2;
+            
+            editingObjectPoints = obj.points.map(point => {
+                const normalizedX = point[1] / 1000;
+                const normalizedY = point[0] / 1000;
+                const displayX = normalizedX * imageRect.width + imageOffsetX;
+                const displayY = normalizedY * imageRect.height + imageOffsetY;
+                
+                return {
+                    x: normalizedX,
+                    y: normalizedY,
+                    displayX: displayX,
+                    displayY: displayY
+                };
+            });
+            
+            // 清除所有标记并重新渲染
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            // 渲染其他已保存的对象（非编辑模式）
+            savedObjects.forEach((savedObj, objIdx) => {
+                if (objIdx !== index) {
+                    savedObj.points.forEach((point, pointIdx) => {
+                        const normalizedX = point[1] / 1000;
+                        const normalizedY = point[0] / 1000;
+                        const displayX = normalizedX * imageRect.width + imageOffsetX;
+                        const displayY = normalizedY * imageRect.height + imageOffsetY;
+                        
+                        createPointMarker(
+                            { displayX, displayY },
+                            objIdx,
+                            true,
+                            savedObj.name,
+                            pointIdx,
+                            false
+                        );
+                    });
+                }
+            });
+            
+            // 渲染正在编辑的对象点（编辑模式）
+            editingObjectPoints.forEach((point, idx) => {
+                createPointMarker(point, index, false, obj.name, idx, true);
+            });
+            
+            // 渲染当前正在编辑的新对象点（如果有）
+            if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
+                currentObjectPoints.forEach((point, idx) => {
+                    createPointMarker(point, currentObjectIndex, false, currentObjectName, idx, false);
+                });
+            }
+            
+            // 显示保存和取消按钮
+            document.getElementById('save-editing-btn').style.display = 'inline-block';
+            document.getElementById('cancel-editing-btn').style.display = 'inline-block';
+            
+            updateObjectsList();
+            showStatus(`正在编辑对象: ${obj.name}，可以拖动点进行编辑，点击点后按Delete删除`, 'success');
+        }
+
+        // 保存编辑的对象
+        function saveEditingObject() {
+            if (editingObjectIndex < 0 || editingObjectPoints.length === 0) {
+                return;
+            }
+            
+            saveHistory();
+            
+            // 更新对象点数据
+            const points = editingObjectPoints.map(p => [
+                Math.round(p.y * 1000),  // y坐标 (0-1000)
+                Math.round(p.x * 1000)   // x坐标 (0-1000)
+            ]);
+            
+            savedObjects[editingObjectIndex].points = points;
+            
+            // 退出编辑模式
+            editingObjectIndex = -1;
+            editingObjectPoints = [];
+            
+            // 隐藏保存和取消按钮
+            document.getElementById('save-editing-btn').style.display = 'none';
+            document.getElementById('cancel-editing-btn').style.display = 'none';
+            
+            // 重新渲染
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
+                currentObjectPoints.forEach((point, idx) => {
+                    createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+                });
+            }
+            
+            updateObjectsList();
+            updateStats();
+            showStatus('已保存编辑', 'success');
+            
+            // 自动保存
+            scheduleAutoSave();
+        }
+
+        // 取消编辑对象
+        function cancelEditingObject() {
+            if (editingObjectIndex < 0) {
+                return;
+            }
+            
+            editingObjectIndex = -1;
+            editingObjectPoints = [];
+            selectedPointIndex = -1;
+            
+            // 隐藏保存和取消按钮
+            document.getElementById('save-editing-btn').style.display = 'none';
+            document.getElementById('cancel-editing-btn').style.display = 'none';
+            
+            // 重新渲染
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
+                currentObjectPoints.forEach((point, idx) => {
+                    createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
+                });
+            }
+            
+            updateObjectsList();
+            showStatus('已取消编辑', 'success');
+        }
+
+        // 自动保存
+        function scheduleAutoSave() {
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+            }
+            
+            autoSaveTimer = setTimeout(() => {
+                if (currentVideo && savedObjects.length > 0) {
+                    const taskTemplate = document.getElementById('task-template').value.trim();
+                    const scene = document.getElementById('scene').value.trim();
+                    
+                    if (taskTemplate && scene) {
+                        saveAnnotations(true); // 静默保存
+                    }
+                }
+            }, 5000); // 5秒后自动保存
+        }
+
+        // 更新对象列表显示（显示所有对象：已保存的 + 正在编辑的）
+        function updateObjectsList() {
+            const container = document.getElementById('objects-list');
+            container.innerHTML = '';
+
+            // 显示已保存的对象
+            savedObjects.forEach((obj, index) => {
+                const objectItem = document.createElement('div');
+                objectItem.className = 'object-item saved-object';
+                if (editingObjectIndex === index) {
+                    objectItem.classList.add('active-editing');
+                }
+                const displayName = obj.name || `目标对象${index + 1}`;
+                const objType = obj.type || 'object';
+                const typeLabel = objType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
+                const editingStatus = editingObjectIndex === index ? 
+                    '<span style="font-size: 0.7em; color: #667eea;">(编辑中)</span>' : 
+                    '<span style="font-size: 0.7em; color: #28a745;">(已保存)</span>';
+                objectItem.innerHTML = `
+                    <div class="object-item-header">
+                        <div class="object-item-name">${displayName} ${typeLabel} ${editingStatus}</div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="object-item-points">${obj.points.length} 个点</div>
+                            <div class="object-item-actions">
+                                <button class="btn-icon btn-edit" onclick="editObject(${index})" title="编辑对象点">✏️</button>
+                                <button class="btn-icon btn-delete" onclick="deleteObject(${index})" title="删除对象">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(objectItem);
+            });
+
+            // 显示正在编辑的对象
+            if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
+                const objectItem = document.createElement('div');
+                objectItem.className = 'object-item editing-object';
+                const displayName = currentObjectName || `目标对象 ${currentObjectIndex + 1}`;
+                const typeLabel = currentObjectType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
+                objectItem.innerHTML = `
+                    <div class="object-item-header">
+                        <div class="object-item-name">${displayName} ${typeLabel} <span style="font-size: 0.7em; color: #ffc107;">(编辑中)</span></div>
+                        <div class="object-item-points">${currentObjectPoints.length} 个点</div>
+                    </div>
+                `;
+                container.appendChild(objectItem);
+            }
+        }
+
+        // 加载视频的标注数据
+        function loadVideoAnnotations() {
+            if (!currentVideo) return;
+
+            const annotationKey = `${folderPath}|${currentVideo.name}`;
+            const annotation = annotations[annotationKey];
+
+            // 清除现有标记
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+
+            // 重置已保存对象列表
+            savedObjects = [];
+
+            // 检查是否是无效视频
+            if (annotation && annotation.is_invalid === true) {
+                // 清空所有字段
+                document.getElementById('task-template').value = '';
+                document.getElementById('scene').value = '';
+                currentObjectIndex = -1;
+                currentObjectPoints = [];
+                currentObjectName = '';
+                currentObjectType = 'object'; // 重置对象类型
+                updateObjectsList();
+                showStatus('此视频已标记为无效视频', 'error');
+                return;
+            }
+
+            // 兼容旧的objects字段和新的object_space字段
+            const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+            
+            if (!annotation || objectSpaceList.length === 0) {
+                // 清空所有字段和显示
+                currentObjectIndex = -1;
+                currentObjectPoints = [];
+                currentObjectName = '';
+                currentObjectType = 'object'; // 重置对象类型
+                savedObjects = []; // 确保清空已保存对象列表
+                
+                // 清空任务模板和场景（如果是未标注的视频）
+                if (!annotation) {
+                    document.getElementById('task-template').value = '';
+                    document.getElementById('scene').value = '';
+                }
+                
+                // 清空ASR结果显示
+                document.getElementById('asr-text-content').style.display = 'none';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+                currentASRResult = null;
+                
+                updateObjectsList();
+                return;
+            }
+
+            // 加载标注的对象
+            // 先设置任务模板和场景
+            if (annotation.task_template) {
+                document.getElementById('task-template').value = annotation.task_template;
+            }
+            if (annotation.scene) {
+                document.getElementById('scene').value = annotation.scene;
+            }
+
+            // 加载ASR结果
+            if (annotation.asr_result) {
+                currentASRResult = annotation.asr_result;
+                // 显示ASR识别结果（只显示完整句子）
+                if (currentASRResult.sentence && currentASRResult.sentence.text) {
+                    document.getElementById('asr-text-content').textContent = currentASRResult.sentence.text;
+                    document.getElementById('asr-text-content').style.display = 'block';
+                    document.getElementById('asr-error').style.display = 'none';
+                    document.getElementById('asr-loading').style.display = 'none';
+                }
+            } else {
+                currentASRResult = null;
+                // 如果没有ASR结果，清空显示
+                document.getElementById('asr-text-content').style.display = 'none';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+            }
+
+            console.log(`[标注交互] 加载已有标注`, {
+                video: currentVideo.name,
+                annotation_id: annotation.id,
+                task_template: annotation.task_template,
+                scene: annotation.scene,
+                objects_count: objectSpaceList.length,
+                has_asr_result: !!annotation.asr_result,
+                timestamp: new Date().toISOString()
+            });
+
+            // 保存已加载的对象到savedObjects，确保包含type字段
+            savedObjects = objectSpaceList.map(obj => ({
+                name: obj.name || '',
+                points: obj.points || [],
+                type: obj.type || 'object'  // 如果没有type字段，默认为'object'（兼容旧数据）
+            }));
+
+            // 为每个已保存的对象创建标记点
+            renderSavedObjects();
+
+            // 显示对象列表
+            updateObjectsList();
+        }
+
+        // 渲染已保存的对象标记点
+        function renderSavedObjects() {
+            const imageContainer = document.getElementById('image-container');
+            const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
+            const containerRect = imageContainer.getBoundingClientRect();
+            
+            const imageOffsetX = (containerRect.width - imageRect.width) / 2;
+            const imageOffsetY = (containerRect.height - imageRect.height) / 2;
+
+            savedObjects.forEach((obj, objIndex) => {
+                obj.points.forEach((point, pointIdx) => {
+                    // point格式应该是 [y, x] 归一化坐标 (0-1000)
+                    const normalizedX = point[1] / 1000;
+                    const normalizedY = point[0] / 1000;
+                    
+                    const displayX = normalizedX * imageRect.width + imageOffsetX;
+                    const displayY = normalizedY * imageRect.height + imageOffsetY;
+                    
+                    // 创建已保存的标记点
+                    createPointMarker(
+                        { displayX, displayY },
+                        objIndex,
+                        true, // isSaved = true
+                        obj.name,
+                        pointIdx
+                    );
+                });
+            });
+        }
+
+
+        // 改变播放速度
+        function changePlaybackSpeed() {
+            const videoPlayer = document.getElementById('video-player');
+            const speed = parseFloat(document.getElementById('playback-speed').value);
+            videoPlayer.playbackRate = speed;
+        }
+
+        // 标记为无效视频
+        async function markAsInvalidVideo() {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            if (!confirm('确定要将此视频标记为无效视频吗？标记后所有字段将被清空。')) {
+                return;
+            }
+
+            // 清空所有字段
+            savedObjects = [];
+            currentObjectIndex = -1;
+            currentObjectPoints = [];
+            currentObjectName = '';
+            currentObjectType = 'object'; // 重置对象类型
+            selectedPointIndex = -1;
+            editingObjectIndex = -1;
+            editingObjectPoints = [];
+            currentASRResult = null; // 清空ASR结果
+            
+            // 清空任务模板和场景
+            document.getElementById('task-template').value = '';
+            document.getElementById('scene').value = '';
+            
+            // 清除所有标记点
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            // 隐藏编辑按钮
+            document.getElementById('save-editing-btn').style.display = 'none';
+            document.getElementById('cancel-editing-btn').style.display = 'none';
+            
+            // 清空ASR结果显示
+            document.getElementById('asr-text-content').style.display = 'none';
+            document.getElementById('asr-error').style.display = 'none';
+            document.getElementById('asr-loading').style.display = 'none';
+            
+            // 更新UI
+            updateObjectsList();
+            updateStats();
+            
+            // 构建标注数据（标记为无效）
+            const annotationKey = `${folderPath}|${currentVideo.name}`;
+            const existingAnnotation = annotations[annotationKey];
+            const annotationId = existingAnnotation?.id || Date.now().toString();
+
+            const annotationData = {
+                id: annotationId,
+                folder: folderPath,
+                video_name: currentVideo.name,
+                task_template: '',
+                scene: '',
+                object_space: [],  // 字段名改为object_space
+                is_invalid: true,  // 标记为无效视频
+                asr_result: null  // 清空ASR结果
+            };
+
+            annotations[annotationKey] = annotationData;
+            
+            console.log(`[标注交互] 标记为无效视频`, {
+                video: currentVideo.name,
+                folder: folderPath,
+                timestamp: new Date().toISOString()
+            });
+
+            try {
+                const response = await fetch('/api/simple_annotation/save_annotations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        annotations: annotations
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('保存失败');
+                }
+
+                showStatus('已标记为无效视频', 'success');
+                displayVideoList();
+                updateProgress();
+                updateStats();
+                
+                // 延迟一下再跳转，确保状态已更新
+                setTimeout(() => {
+                    jumpToNextUnannotated();
+                }, 500);
+            } catch (error) {
+                showStatus('保存失败: ' + error.message, 'error');
+            }
+        }
+
+        // 保存标注（保存所有已保存的对象到文件）
+        async function saveAnnotations(silent = false) {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            // 检查是否是无效视频
+            const annotationKey = `${folderPath}|${currentVideo.name}`;
+            const existingAnnotation = annotations[annotationKey];
+            if (existingAnnotation && existingAnnotation.is_invalid) {
+                // 如果之前标记为无效，现在要保存正常标注，需要清除无效标记
+                // 继续执行保存流程
+            } else if (savedObjects.length === 0) {
+                showStatus('请先添加并保存至少一个目标对象或放置空间', 'error');
+                return;
+            }
+
+            const taskTemplate = document.getElementById('task-template').value.trim();
+            const scene = document.getElementById('scene').value.trim();
+
+            if (!taskTemplate || !scene) {
+                showStatus('请填写任务指令模板和场景', 'error');
+                return;
+            }
+
+            // 构建标注数据
+            const annotationId = existingAnnotation?.id || Date.now().toString();
+
+            // 使用已保存的对象列表
+            const annotationData = {
+                id: annotationId,
+                folder: folderPath,
+                video_name: currentVideo.name,
+                task_template: taskTemplate,
+                scene: scene,
+                object_space: savedObjects,  // 字段名改为object_space
+                is_invalid: false,  // 明确标记为非无效视频
+                asr_result: currentASRResult  // 保存完整的ASR结果（包括句子级别和词汇级别）
+            };
+
+            annotations[annotationKey] = annotationData;
+            
+            // 打印保存标注的交互信息
+            console.log(`[标注交互] 保存标注到文件`, {
+                video: currentVideo.name,
+                folder: folderPath,
+                task_template: taskTemplate,
+                scene: scene,
+                objects_count: savedObjects.length,
+                objects: savedObjects.map(obj => ({
+                    name: obj.name,
+                    type: obj.type || 'object',
+                    points_count: obj.points.length
+                })),
+                timestamp: new Date().toISOString()
+            });
+
+            try {
+                const response = await fetch('/api/simple_annotation/save_annotations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        annotations: annotations
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('保存失败');
+                }
+
+                if (!silent) {
+                    showStatus('标注保存成功！', 'success');
+                    // 更新标注数据后，自动跳转到下一个未标注的视频
+                    displayVideoList();
+                    updateProgress();
+                    updateStats();
+                    // 延迟一下再跳转，确保状态已更新
+                    setTimeout(() => {
+                        jumpToNextUnannotated();
+                    }, 500);
+                } else {
+                    displayVideoList();
+                    updateProgress();
+                    updateStats();
+                }
+            } catch (error) {
+                showStatus('保存失败: ' + error.message, 'error');
+            }
+        }
+
+        // 跳转到下一个未标注的视频（从当前视频之后开始）
+        function jumpToNextUnannotated() {
+            // 从当前视频的下一个开始查找
+            const startIndex = currentVideoIndex >= 0 ? currentVideoIndex + 1 : 0;
+            
+            for (let i = startIndex; i < videos.length; i++) {
+                const video = videos[i];
+                const annotationKey = `${folderPath}|${video.name}`;
+                const annotation = annotations[annotationKey];
+                const isInvalid = annotation && annotation.is_invalid === true;
+                const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                const isAnnotated = objectSpaceList.length > 0;
+                
+                // 跳过无效视频和已标注的视频
+                if (!isInvalid && !isAnnotated) {
+                    selectVideo(i);
+                    return;
+                }
+            }
+            
+            // 如果从当前位置往后没找到，从头开始查找
+            for (let i = 0; i < startIndex; i++) {
+                const video = videos[i];
+                const annotationKey = `${folderPath}|${video.name}`;
+                const annotation = annotations[annotationKey];
+                const isInvalid = annotation && annotation.is_invalid === true;
+                const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                const isAnnotated = objectSpaceList.length > 0;
+                
+                // 跳过无效视频和已标注的视频
+                if (!isInvalid && !isAnnotated) {
+                    selectVideo(i);
+                    return;
+                }
+            }
+            
+            showStatus('所有视频都已标注或标记为无效', 'success');
+        }
+
+        // 跳转到未标注的视频
+        function jumpToUnannotated() {
+            for (let i = 0; i < videos.length; i++) {
+                const video = videos[i];
+                const annotationKey = `${folderPath}|${video.name}`;
+                const annotation = annotations[annotationKey];
+                const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
+                const isAnnotated = objectSpaceList.length > 0;
+                
+                if (!isAnnotated) {
+                    selectVideo(i);
+                    return;
+                }
+            }
+            
+            showStatus('所有视频都已标注', 'success');
+        }
+
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // 显示/隐藏加载动画
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
+
