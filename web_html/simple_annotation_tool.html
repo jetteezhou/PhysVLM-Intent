@@ -817,6 +817,26 @@
         let dragOffset = { x: 0, y: 0 }; // 拖动偏移量
         let currentASRResult = null; // 当前视频的ASR识别结果（包含sentence和words）
         let currentObjectType = 'object'; // 当前对象的类型：'object' 或 'space'
+        let globalTaskTemplate = ''; // 全局任务模板（保留在切换视频时）
+        let globalScene = ''; // 全局场景（保留在切换视频时）
+
+        // 监听任务模板和场景输入框的变化，更新全局变量
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskTemplateInput = document.getElementById('task-template');
+            const sceneInput = document.getElementById('scene');
+            
+            if (taskTemplateInput) {
+                taskTemplateInput.addEventListener('input', () => {
+                    globalTaskTemplate = taskTemplateInput.value.trim();
+                });
+            }
+            
+            if (sceneInput) {
+                sceneInput.addEventListener('input', () => {
+                    globalScene = sceneInput.value.trim();
+                });
+            }
+        });
 
         // 初始化键盘快捷键
         document.addEventListener('keydown', (e) => {
@@ -1018,6 +1038,10 @@
                 showStatus('请先选择文件夹', 'error');
                 return;
             }
+
+            // 保存当前的任务模板和场景到全局变量
+            globalTaskTemplate = document.getElementById('task-template').value.trim();
+            globalScene = document.getElementById('scene').value.trim();
 
             showLoading(true);
             try {
@@ -1387,16 +1411,15 @@
                 document.getElementById('asr-loading').style.display = 'none';
 
                 if (data.success && data.text && data.text.trim()) {
-                    // 保存完整的ASR结果（包括句子级别和词汇级别）
+                    // 保存完整的ASR结果（包括多个句子和词汇级别）
                     currentASRResult = {
-                        sentence: data.sentence || { text: data.text },
+                        sentences: data.sentences || (data.sentence ? [data.sentence] : []),
+                        text: data.text, // 完整文本（所有句子合并）
                         words: data.words || []
                     };
                     
-                    // 显示识别结果（只显示完整句子）
-                    document.getElementById('asr-text-content').textContent = data.text;
-                    document.getElementById('asr-text-content').style.display = 'block';
-                    document.getElementById('asr-error').style.display = 'none';
+                    // 显示识别结果（支持多个句子）
+                    displayASRResult(currentASRResult);
                 } else {
                     // ASR识别失败或为空，显示友好提示而不是错误
                     const errorMsg = data.error || '未识别到语音内容';
@@ -2135,9 +2158,8 @@
 
             // 检查是否是无效视频
             if (annotation && annotation.is_invalid === true) {
-                // 清空所有字段
-                document.getElementById('task-template').value = '';
-                document.getElementById('scene').value = '';
+                // 清空所有字段（但保留全局任务模板和场景）
+                // 不在这里清空任务模板和场景，让它们保留全局值
                 currentObjectIndex = -1;
                 currentObjectPoints = [];
                 currentObjectName = '';
@@ -2158,10 +2180,19 @@
                 currentObjectType = 'object'; // 重置对象类型
                 savedObjects = []; // 确保清空已保存对象列表
                 
-                // 清空任务模板和场景（如果是未标注的视频）
+                // 如果是未标注的视频，保留全局任务模板和场景的值
+                // 如果全局值存在，则使用全局值；否则清空
                 if (!annotation) {
-                    document.getElementById('task-template').value = '';
-                    document.getElementById('scene').value = '';
+                    if (globalTaskTemplate) {
+                        document.getElementById('task-template').value = globalTaskTemplate;
+                    } else {
+                        document.getElementById('task-template').value = '';
+                    }
+                    if (globalScene) {
+                        document.getElementById('scene').value = globalScene;
+                    } else {
+                        document.getElementById('scene').value = '';
+                    }
                 }
                 
                 // 清空ASR结果显示
@@ -2178,21 +2209,18 @@
             // 先设置任务模板和场景
             if (annotation.task_template) {
                 document.getElementById('task-template').value = annotation.task_template;
+                globalTaskTemplate = annotation.task_template; // 更新全局变量
             }
             if (annotation.scene) {
                 document.getElementById('scene').value = annotation.scene;
+                globalScene = annotation.scene; // 更新全局变量
             }
 
             // 加载ASR结果
             if (annotation.asr_result) {
                 currentASRResult = annotation.asr_result;
-                // 显示ASR识别结果（只显示完整句子）
-                if (currentASRResult.sentence && currentASRResult.sentence.text) {
-                    document.getElementById('asr-text-content').textContent = currentASRResult.sentence.text;
-                    document.getElementById('asr-text-content').style.display = 'block';
-                    document.getElementById('asr-error').style.display = 'none';
-                    document.getElementById('asr-loading').style.display = 'none';
-                }
+                // 显示ASR识别结果（支持多个句子）
+                displayASRResult(currentASRResult);
             } else {
                 currentASRResult = null;
                 // 如果没有ASR结果，清空显示
@@ -2381,6 +2409,10 @@
 
             const taskTemplate = document.getElementById('task-template').value.trim();
             const scene = document.getElementById('scene').value.trim();
+            
+            // 更新全局变量
+            globalTaskTemplate = taskTemplate;
+            globalScene = scene;
 
             if (!taskTemplate || !scene) {
                 showStatus('请填写任务指令模板和场景', 'error');
@@ -2527,6 +2559,45 @@
         // 显示/隐藏加载动画
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        // 显示ASR识别结果（支持多个句子）
+        function displayASRResult(asrResult) {
+            if (!asrResult) {
+                document.getElementById('asr-text-content').style.display = 'none';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+                return;
+            }
+
+            // 如果有完整文本，直接显示
+            if (asrResult.text && asrResult.text.trim()) {
+                document.getElementById('asr-text-content').textContent = asrResult.text;
+                document.getElementById('asr-text-content').style.display = 'block';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+            } 
+            // 如果有多个句子，合并显示
+            else if (asrResult.sentences && asrResult.sentences.length > 0) {
+                const fullText = asrResult.sentences.map(s => s.text).join(' ');
+                document.getElementById('asr-text-content').textContent = fullText;
+                document.getElementById('asr-text-content').style.display = 'block';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+            }
+            // 如果有单个句子（兼容旧格式）
+            else if (asrResult.sentence && asrResult.sentence.text) {
+                document.getElementById('asr-text-content').textContent = asrResult.sentence.text;
+                document.getElementById('asr-text-content').style.display = 'block';
+                document.getElementById('asr-error').style.display = 'none';
+                document.getElementById('asr-loading').style.display = 'none';
+            }
+            else {
+                document.getElementById('asr-text-content').style.display = 'none';
+                document.getElementById('asr-error').style.display = 'block';
+                document.getElementById('asr-error').textContent = '⚠️ 未识别到语音内容';
+                document.getElementById('asr-loading').style.display = 'none';
+            }
         }
     </script>
 </body>

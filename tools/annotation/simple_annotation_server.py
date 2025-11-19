@@ -328,30 +328,108 @@ def asr_recognition():
                 'error': error_msg or 'ASR识别失败'
             }), 500
         
-        # 构建识别结果文本（完整句子）
-        recognition_text = ''
-        if words_list:
-            recognition_text = ' '.join([word.get('text', '') for word in words_list])
-        
-        # 构建完整的ASR结果结构
-        # 句子级别：包含完整文本
-        sentence_data = {
-            'text': recognition_text,
-            'begin_time': words_list[0].get('begin_time', 0) if words_list else 0,
-            'end_time': words_list[-1].get('end_time', 0) if words_list else 0
-        }
-        
-        # 词汇级别：包含每个词的时间戳
-        words_data = words_list
-        
-        logger.info(f"[ASR识别] ASR识别成功，识别文本: {recognition_text}")
-        
-        return jsonify({
-            'success': True,
-            'text': recognition_text,  # 完整句子文本（用于前端显示）
-            'sentence': sentence_data,  # 句子级别数据
-            'words': words_data  # 词汇级别数据（包含时间戳）
-        })
+        # 需要重新调用API获取完整的句子信息
+        # 因为audio_to_words_with_timestamps只返回了第一句的词汇列表
+        # 我们需要重新调用API来获取所有句子的信息
+        try:
+            from pipeline.audio_processor import convert_to_mono
+            import dashscope
+            from dashscope.audio.asr import Recognition
+            from http import HTTPStatus
+            from config.settings import ASR_MODEL, AUDIO_FORMAT, AUDIO_SAMPLE_RATE
+            
+            # 使用已经提取的音频路径（避免重复提取视频）
+            audio_path_for_sentence = audio_path
+            
+            # 设置API密钥
+            dashscope.api_key = DASHSCOPE_API_KEY
+            
+            # 转换音频为单声道
+            mono_audio_file = convert_to_mono(audio_path_for_sentence)
+            if not mono_audio_file:
+                raise ValueError("无法转换音频格式")
+            
+            # 调用API获取所有句子信息
+            recognition = Recognition(
+                model=ASR_MODEL,
+                format=AUDIO_FORMAT,
+                sample_rate=AUDIO_SAMPLE_RATE,
+                callback=None
+            )
+            
+            result = recognition.call(mono_audio_file)
+            sentences_list = []
+            
+            if result.status_code == HTTPStatus.OK:
+                sentence = result.get_sentence()
+                if sentence and len(sentence) > 0:
+                    # 遍历所有句子
+                    for sent in sentence:
+                        if isinstance(sent, dict):
+                            # 提取句子文本和时间信息
+                            sent_text = sent.get('text', '')
+                            if sent_text:
+                                sentences_list.append({
+                                    'text': sent_text,
+                                    'begin_time': sent.get('begin_time', 0),
+                                    'end_time': sent.get('end_time', 0)
+                                })
+            
+            # 清理临时文件
+            if mono_audio_file and os.path.exists(mono_audio_file):
+                try:
+                    os.remove(mono_audio_file)
+                except Exception as e:
+                    logger.warning(f"清理临时文件失败: {e}")
+            
+            # 构建完整文本（所有句子合并）
+            recognition_text = ''
+            if sentences_list:
+                recognition_text = ' '.join([sent.get('text', '') for sent in sentences_list])
+            elif words_list:
+                # 如果没有句子信息，使用词汇列表构建文本
+                recognition_text = ' '.join([word.get('text', '') for word in words_list])
+            
+            # 如果没有获取到句子信息，至少构建一个句子
+            if not sentences_list and words_list:
+                sentences_list = [{
+                    'text': recognition_text,
+                    'begin_time': words_list[0].get('begin_time', 0) if words_list else 0,
+                    'end_time': words_list[-1].get('end_time', 0) if words_list else 0
+                }]
+            
+            logger.info(f"[ASR识别] ASR识别成功，识别到 {len(sentences_list)} 个句子，识别文本: {recognition_text}")
+            
+            return jsonify({
+                'success': True,
+                'text': recognition_text,  # 完整文本（所有句子合并，用于前端显示）
+                'sentences': sentences_list,  # 多个句子级别数据
+                'words': words_list  # 词汇级别数据（包含时间戳）
+            })
+            
+        except Exception as e:
+            logger.warning(f"[ASR识别] 获取句子信息失败，使用词汇列表构建结果: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
+            # 如果获取句子信息失败，使用词汇列表构建结果（兼容旧逻辑）
+            recognition_text = ''
+            if words_list:
+                recognition_text = ' '.join([word.get('text', '') for word in words_list])
+            
+            sentence_data = {
+                'text': recognition_text,
+                'begin_time': words_list[0].get('begin_time', 0) if words_list else 0,
+                'end_time': words_list[-1].get('end_time', 0) if words_list else 0
+            }
+            
+            logger.info(f"[ASR识别] ASR识别成功（使用词汇列表），识别文本: {recognition_text}")
+            
+            return jsonify({
+                'success': True,
+                'text': recognition_text,  # 完整句子文本（用于前端显示）
+                'sentences': [sentence_data],  # 单个句子（兼容格式）
+                'words': words_list  # 词汇级别数据（包含时间戳）
+            })
         
     except Exception as e:
         logger.error(f"ASR识别失败: {e}")
