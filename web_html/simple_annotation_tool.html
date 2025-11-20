@@ -722,7 +722,6 @@
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="addObject()">➕ 添加目标对象 (A)</button>
                         <button class="btn btn-primary" onclick="addPlacementSpace()">📍 添加放置空间 (W)</button>
-                        <button class="btn btn-success" onclick="saveCurrentObject()">💾 保存目标 (S)</button>
                         <button class="btn btn-warning" onclick="clearCurrentObject()">🗑️ 清除当前对象 (C)</button>
                         <button class="btn btn-success" id="save-editing-btn" onclick="saveEditingObject()" style="display: none;">💾 保存编辑</button>
                         <button class="btn btn-warning" id="cancel-editing-btn" onclick="cancelEditingObject()" style="display: none;">❌ 取消编辑 (Esc)</button>
@@ -760,10 +759,6 @@
                     <div class="shortcut-item">
                         <span>添加对象</span>
                         <span class="shortcut-key">A</span>
-                    </div>
-                    <div class="shortcut-item">
-                        <span>保存当前对象</span>
-                        <span class="shortcut-key">S</span>
                     </div>
                     <div class="shortcut-item">
                         <span>清除当前对象</span>
@@ -877,13 +872,6 @@
             if (e.key === 'w' || e.key === 'W') {
                 e.preventDefault();
                 addPlacementSpace();
-                return;
-            }
-            
-            // S 保存当前对象
-            if (e.key === 's' || e.key === 'S') {
-                e.preventDefault();
-                saveCurrentObject();
                 return;
             }
             
@@ -1718,9 +1706,6 @@
                 return;
             }
 
-            // 如果有正在编辑的对象，先自动保存
-            autoSaveCurrentObjectIfNeeded();
-
             // 弹出输入框让用户输入类别
             const category = prompt('请输入对象类别（例如：杯子、书本、鼠标等）：');
             if (category === null || category.trim() === '') {
@@ -1757,9 +1742,6 @@
                 return;
             }
 
-            // 如果有正在编辑的对象，先自动保存
-            autoSaveCurrentObjectIfNeeded();
-
             // 弹出输入框让用户输入放置空间类别
             const category = prompt('请输入放置空间类别（例如：黑色笔的右边等）：');
             if (category === null || category.trim() === '') {
@@ -1787,119 +1769,6 @@
             showStatus(`已添加放置空间: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
             scrollToObjectsListBottom();
-        }
-
-        // 自动保存当前正在编辑的对象（如果有的话，静默保存）
-        function autoSaveCurrentObjectIfNeeded() {
-            // 检查是否有正在编辑的对象且有标注点
-            if (currentObjectIndex === -1 || currentObjectPoints.length === 0) {
-                return false; // 没有需要保存的对象
-            }
-
-            // 构建当前对象数据
-            const points = currentObjectPoints.map(p => [
-                Math.round(p.y * 1000),  // y坐标 (0-1000)
-                Math.round(p.x * 1000)   // x坐标 (0-1000)
-            ]);
-
-            const objectData = {
-                name: currentObjectName,
-                points: points,
-                type: currentObjectType  // 添加类型字段：'object' 或 'space'
-            };
-
-            saveHistory();
-            
-            // 添加到已保存对象列表
-            savedObjects.push(objectData);
-
-            console.log(`[标注交互] 自动保存目标对象`, {
-                video: currentVideo.name,
-                object_index: currentObjectIndex,
-                object_name: currentObjectName,
-                points_count: points.length,
-                total_saved_objects: savedObjects.length,
-                timestamp: new Date().toISOString()
-            });
-
-            // 重新渲染所有标记点（包括刚保存的）
-            const imageContainer = document.getElementById('image-container');
-            const markers = imageContainer.querySelectorAll('.point-marker');
-            markers.forEach(marker => marker.remove());
-            
-            renderSavedObjects();
-            
-            // 重置当前编辑对象
-            currentObjectIndex = -1;
-            currentObjectPoints = [];
-            currentObjectName = '';
-            currentObjectType = 'object'; // 重置对象类型
-            selectedPointIndex = -1;
-            
-            updateObjectsList();
-            updateStats();
-            
-            return true; // 已保存
-        }
-
-        // 保存当前目标对象
-        function saveCurrentObject() {
-            if (!currentVideo) {
-                showStatus('请先选择视频', 'error');
-                return;
-            }
-
-            if (currentObjectIndex === -1 || currentObjectPoints.length === 0) {
-                showStatus('请先添加目标对象并标注点', 'error');
-                return;
-            }
-
-            // 构建当前对象数据
-            const points = currentObjectPoints.map(p => [
-                Math.round(p.y * 1000),  // y坐标 (0-1000)
-                Math.round(p.x * 1000)   // x坐标 (0-1000)
-            ]);
-
-            const objectData = {
-                name: currentObjectName,
-                points: points,
-                type: currentObjectType  // 添加类型字段：'object' 或 'space'
-            };
-
-            saveHistory();
-            
-            // 添加到已保存对象列表
-            savedObjects.push(objectData);
-
-            console.log(`[标注交互] 保存目标对象`, {
-                video: currentVideo.name,
-                object_index: currentObjectIndex,
-                object_name: currentObjectName,
-                points_count: points.length,
-                total_saved_objects: savedObjects.length,
-                timestamp: new Date().toISOString()
-            });
-
-            // 重新渲染所有标记点（包括刚保存的）
-            const imageContainer = document.getElementById('image-container');
-            const markers = imageContainer.querySelectorAll('.point-marker');
-            markers.forEach(marker => marker.remove());
-            
-            renderSavedObjects();
-            
-            // 重置当前编辑对象
-            currentObjectIndex = -1;
-            currentObjectPoints = [];
-            currentObjectName = '';
-            currentObjectType = 'object'; // 重置对象类型
-            selectedPointIndex = -1;
-            
-            updateObjectsList();
-            updateStats();
-            showStatus(`目标对象 "${objectData.name}" 已保存！可以继续添加新目标`, 'success');
-            
-            // 自动保存
-            scheduleAutoSave();
         }
 
         // 清除当前对象
@@ -2468,24 +2337,41 @@
             }
         }
 
-        // 保存标注（保存所有已保存的对象到文件）
+        // 保存标注（保存所有对象到文件，包括正在编辑的对象）
         async function saveAnnotations(silent = false) {
             if (!currentVideo) {
                 showStatus('请先选择视频', 'error');
                 return;
             }
 
-            // 如果有正在编辑的对象，先自动保存
-            autoSaveCurrentObjectIfNeeded();
-
             // 检查是否是无效视频
             const annotationKey = `${folderPath}|${currentVideo.name}`;
             const existingAnnotation = annotations[annotationKey];
+            
+            // 收集所有要保存的对象（包括正在编辑的对象）
+            const allObjectsToSave = [...savedObjects];
+            
+            // 如果有正在编辑的对象，也添加到保存列表
+            if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
+                const points = currentObjectPoints.map(p => [
+                    Math.round(p.y * 1000),  // y坐标 (0-1000)
+                    Math.round(p.x * 1000)   // x坐标 (0-1000)
+                ]);
+
+                const currentObjectData = {
+                    name: currentObjectName,
+                    points: points,
+                    type: currentObjectType
+                };
+                
+                allObjectsToSave.push(currentObjectData);
+            }
+            
             if (existingAnnotation && existingAnnotation.is_invalid) {
                 // 如果之前标记为无效，现在要保存正常标注，需要清除无效标记
                 // 继续执行保存流程
-            } else if (savedObjects.length === 0) {
-                showStatus('请先添加并保存至少一个目标对象或放置空间', 'error');
+            } else if (allObjectsToSave.length === 0) {
+                showStatus('请先添加至少一个目标对象或放置空间', 'error');
                 return;
             }
 
@@ -2504,14 +2390,14 @@
             // 构建标注数据
             const annotationId = existingAnnotation?.id || Date.now().toString();
 
-            // 使用已保存的对象列表
+            // 使用所有对象列表（包括正在编辑的对象）
             const annotationData = {
                 id: annotationId,
                 folder: folderPath,
                 video_name: currentVideo.name,
                 task_template: taskTemplate,
                 scene: scene,
-                object_space: savedObjects,  // 字段名改为object_space
+                object_space: allObjectsToSave,  // 保存所有对象（包括正在编辑的）
                 is_invalid: false,  // 明确标记为非无效视频
                 asr_result: currentASRResult  // 保存完整的ASR结果（包括句子级别和词汇级别）
             };
@@ -2524,8 +2410,8 @@
                 folder: folderPath,
                 task_template: taskTemplate,
                 scene: scene,
-                objects_count: savedObjects.length,
-                objects: savedObjects.map(obj => ({
+                objects_count: allObjectsToSave.length,
+                objects: allObjectsToSave.map(obj => ({
                     name: obj.name,
                     type: obj.type || 'object',
                     points_count: obj.points.length
@@ -2547,6 +2433,33 @@
 
                 if (!response.ok) {
                     throw new Error('保存失败');
+                }
+
+                // 保存成功后，将正在编辑的对象也保存到 savedObjects，并重置当前编辑状态
+                if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
+                    const points = currentObjectPoints.map(p => [
+                        Math.round(p.y * 1000),
+                        Math.round(p.x * 1000)
+                    ]);
+                    savedObjects.push({
+                        name: currentObjectName,
+                        points: points,
+                        type: currentObjectType
+                    });
+                    
+                    // 重置当前编辑状态
+                    currentObjectIndex = -1;
+                    currentObjectPoints = [];
+                    currentObjectName = '';
+                    currentObjectType = 'object';
+                    selectedPointIndex = -1;
+                    
+                    // 重新渲染标记点
+                    const imageContainer = document.getElementById('image-container');
+                    const markers = imageContainer.querySelectorAll('.point-marker');
+                    markers.forEach(marker => marker.remove());
+                    renderSavedObjects();
+                    updateObjectsList();
                 }
 
                 if (!silent) {
