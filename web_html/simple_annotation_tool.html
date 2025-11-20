@@ -1718,6 +1718,9 @@
                 return;
             }
 
+            // 如果有正在编辑的对象，先自动保存
+            autoSaveCurrentObjectIfNeeded();
+
             // 弹出输入框让用户输入类别
             const category = prompt('请输入对象类别（例如：杯子、书本、鼠标等）：');
             if (category === null || category.trim() === '') {
@@ -1744,6 +1747,7 @@
             
             showStatus(`已添加目标对象: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
+            scrollToObjectsListBottom();
         }
 
         // 添加放置空间
@@ -1752,6 +1756,9 @@
                 showStatus('请先选择视频', 'error');
                 return;
             }
+
+            // 如果有正在编辑的对象，先自动保存
+            autoSaveCurrentObjectIfNeeded();
 
             // 弹出输入框让用户输入放置空间类别
             const category = prompt('请输入放置空间类别（例如：黑色笔的右边等）：');
@@ -1779,6 +1786,60 @@
             
             showStatus(`已添加放置空间: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
+            scrollToObjectsListBottom();
+        }
+
+        // 自动保存当前正在编辑的对象（如果有的话，静默保存）
+        function autoSaveCurrentObjectIfNeeded() {
+            // 检查是否有正在编辑的对象且有标注点
+            if (currentObjectIndex === -1 || currentObjectPoints.length === 0) {
+                return false; // 没有需要保存的对象
+            }
+
+            // 构建当前对象数据
+            const points = currentObjectPoints.map(p => [
+                Math.round(p.y * 1000),  // y坐标 (0-1000)
+                Math.round(p.x * 1000)   // x坐标 (0-1000)
+            ]);
+
+            const objectData = {
+                name: currentObjectName,
+                points: points,
+                type: currentObjectType  // 添加类型字段：'object' 或 'space'
+            };
+
+            saveHistory();
+            
+            // 添加到已保存对象列表
+            savedObjects.push(objectData);
+
+            console.log(`[标注交互] 自动保存目标对象`, {
+                video: currentVideo.name,
+                object_index: currentObjectIndex,
+                object_name: currentObjectName,
+                points_count: points.length,
+                total_saved_objects: savedObjects.length,
+                timestamp: new Date().toISOString()
+            });
+
+            // 重新渲染所有标记点（包括刚保存的）
+            const imageContainer = document.getElementById('image-container');
+            const markers = imageContainer.querySelectorAll('.point-marker');
+            markers.forEach(marker => marker.remove());
+            
+            renderSavedObjects();
+            
+            // 重置当前编辑对象
+            currentObjectIndex = -1;
+            currentObjectPoints = [];
+            currentObjectName = '';
+            currentObjectType = 'object'; // 重置对象类型
+            selectedPointIndex = -1;
+            
+            updateObjectsList();
+            updateStats();
+            
+            return true; // 已保存
         }
 
         // 保存当前目标对象
@@ -2141,6 +2202,24 @@
             }
         }
 
+        // 滚动到对象列表底部
+        function scrollToObjectsListBottom() {
+            const container = document.getElementById('objects-list');
+            if (!container) return;
+            
+            // 等待 DOM 更新完成
+            setTimeout(() => {
+                // 滚动到最后一个对象项（最可靠的方法）
+                const lastItem = container.lastElementChild;
+                if (lastItem) {
+                    lastItem.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                } else {
+                    // 如果没有子元素，滚动到容器本身
+                    container.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                }
+            }, 100);
+        }
+
         // 加载视频的标注数据
         function loadVideoAnnotations() {
             if (!currentVideo) return;
@@ -2395,6 +2474,9 @@
                 showStatus('请先选择视频', 'error');
                 return;
             }
+
+            // 如果有正在编辑的对象，先自动保存
+            autoSaveCurrentObjectIfNeeded();
 
             // 检查是否是无效视频
             const annotationKey = `${folderPath}|${currentVideo.name}`;
