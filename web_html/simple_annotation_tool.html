@@ -800,6 +800,7 @@
         let currentObjectPoints = [];
         let currentObjectName = '';
         let savedObjects = []; // 已保存的对象列表
+        let editingObjects = []; // 所有正在编辑的对象列表（未保存但已标注点的对象）
         let folderPath = '';
         let selectedPointIndex = -1; // 当前选中的点索引
         let selectedObjectIndex = -1; // 当前选中的对象索引（用于编辑模式）
@@ -1132,8 +1133,9 @@
                 document.getElementById('stat-current-video').textContent = '-';
             }
             
-            const totalObjects = savedObjects.length;
+            const totalObjects = savedObjects.length + editingObjects.length + (currentObjectIndex !== -1 && currentObjectPoints.length > 0 ? 1 : 0);
             const totalPoints = savedObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
+                               editingObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
                                currentObjectPoints.length;
             
             document.getElementById('stat-objects-count').textContent = totalObjects;
@@ -1228,6 +1230,7 @@
             currentObjectName = '';
             currentObjectType = 'object'; // 重置对象类型
             savedObjects = []; // 重置已保存对象列表
+            editingObjects = []; // 重置正在编辑的对象列表
             selectedPointIndex = -1;
             editingObjectIndex = -1;
             editingObjectPoints = [];
@@ -1706,14 +1709,44 @@
                 return;
             }
 
+            // 如果当前有正在编辑的对象且有标注点，先保存到 editingObjects
+            if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
+                const points = currentObjectPoints.map(p => [
+                    Math.round(p.y * 1000),  // y坐标 (0-1000)
+                    Math.round(p.x * 1000)   // x坐标 (0-1000)
+                ]);
+
+                editingObjects.push({
+                    name: currentObjectName,
+                    points: points,
+                    type: currentObjectType
+                });
+                
+                // 清除当前对象的标记点（只清除正在编辑的标记点）
+                const imageContainer = document.getElementById('image-container');
+                const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
+                editingMarkers.forEach(marker => {
+                    const markerX = parseFloat(marker.style.left);
+                    const markerY = parseFloat(marker.style.top);
+                    const isCurrentObjectPoint = currentObjectPoints.some(p => {
+                        const expectedX = p.displayX;
+                        const expectedY = p.displayY;
+                        return Math.abs(markerX - expectedX) < 5 && Math.abs(markerY - expectedY) < 5;
+                    });
+                    if (isCurrentObjectPoint) {
+                        marker.remove();
+                    }
+                });
+            }
+
             // 弹出输入框让用户输入类别
             const category = prompt('请输入对象类别（例如：杯子、书本、鼠标等）：');
             if (category === null || category.trim() === '') {
                 return; // 用户取消或输入为空
             }
             
-            // 计算新的对象索引（包括已保存的对象）
-            currentObjectIndex = savedObjects.length;
+            // 计算新的对象索引（包括已保存的对象和正在编辑的对象）
+            currentObjectIndex = savedObjects.length + editingObjects.length;
             currentObjectPoints = [];
             currentObjectName = category.trim();
             currentObjectType = 'object'; // 设置为对象类型
@@ -1727,6 +1760,7 @@
                 category: currentObjectName,
                 type: currentObjectType,
                 saved_objects_count: savedObjects.length,
+                editing_objects_count: editingObjects.length,
                 timestamp: new Date().toISOString()
             });
             
@@ -1742,14 +1776,44 @@
                 return;
             }
 
+            // 如果当前有正在编辑的对象且有标注点，先保存到 editingObjects
+            if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
+                const points = currentObjectPoints.map(p => [
+                    Math.round(p.y * 1000),  // y坐标 (0-1000)
+                    Math.round(p.x * 1000)   // x坐标 (0-1000)
+                ]);
+
+                editingObjects.push({
+                    name: currentObjectName,
+                    points: points,
+                    type: currentObjectType
+                });
+                
+                // 清除当前对象的标记点（只清除正在编辑的标记点）
+                const imageContainer = document.getElementById('image-container');
+                const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
+                editingMarkers.forEach(marker => {
+                    const markerX = parseFloat(marker.style.left);
+                    const markerY = parseFloat(marker.style.top);
+                    const isCurrentObjectPoint = currentObjectPoints.some(p => {
+                        const expectedX = p.displayX;
+                        const expectedY = p.displayY;
+                        return Math.abs(markerX - expectedX) < 5 && Math.abs(markerY - expectedY) < 5;
+                    });
+                    if (isCurrentObjectPoint) {
+                        marker.remove();
+                    }
+                });
+            }
+
             // 弹出输入框让用户输入放置空间类别
             const category = prompt('请输入放置空间类别（例如：黑色笔的右边等）：');
             if (category === null || category.trim() === '') {
                 return; // 用户取消或输入为空
             }
             
-            // 计算新的对象索引（包括已保存的对象）
-            currentObjectIndex = savedObjects.length;
+            // 计算新的对象索引（包括已保存的对象和正在编辑的对象）
+            currentObjectIndex = savedObjects.length + editingObjects.length;
             currentObjectPoints = [];
             currentObjectName = category.trim();
             currentObjectType = 'space'; // 设置为放置空间类型
@@ -1763,6 +1827,7 @@
                 category: currentObjectName,
                 type: currentObjectType,
                 saved_objects_count: savedObjects.length,
+                editing_objects_count: editingObjects.length,
                 timestamp: new Date().toISOString()
             });
             
@@ -2022,7 +2087,7 @@
             }, 5000); // 5秒后自动保存
         }
 
-        // 更新对象列表显示（显示所有对象：已保存的 + 正在编辑的）
+        // 更新对象列表显示（显示所有对象：已保存的 + 正在编辑的 + 当前正在编辑的）
         function updateObjectsList() {
             const container = document.getElementById('objects-list');
             container.innerHTML = '';
@@ -2055,7 +2120,23 @@
                 container.appendChild(objectItem);
             });
 
-            // 显示正在编辑的对象
+            // 显示正在编辑的对象（已标注点但未保存的对象）
+            editingObjects.forEach((obj, index) => {
+                const objectItem = document.createElement('div');
+                objectItem.className = 'object-item editing-object';
+                const displayName = obj.name || `目标对象 ${savedObjects.length + index + 1}`;
+                const objType = obj.type || 'object';
+                const typeLabel = objType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
+                objectItem.innerHTML = `
+                    <div class="object-item-header">
+                        <div class="object-item-name">${displayName} ${typeLabel} <span style="font-size: 0.7em; color: #ffc107;">(待保存)</span></div>
+                        <div class="object-item-points">${obj.points.length} 个点</div>
+                    </div>
+                `;
+                container.appendChild(objectItem);
+            });
+
+            // 显示当前正在编辑的对象
             if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                 const objectItem = document.createElement('div');
                 objectItem.className = 'object-item editing-object';
@@ -2076,17 +2157,23 @@
             const container = document.getElementById('objects-list');
             if (!container) return;
             
-            // 等待 DOM 更新完成
+            // 等待 DOM 更新完成（减少延迟时间）
             setTimeout(() => {
-                // 滚动到最后一个对象项（最可靠的方法）
+                // 方法1: 直接滚动到容器底部（最快）
+                const parentContainer = container.parentElement;
+                if (parentContainer && parentContainer.scrollHeight > parentContainer.clientHeight) {
+                    parentContainer.scrollTop = parentContainer.scrollHeight;
+                }
+                
+                // 方法2: 滚动到最后一个对象项（备用方法）
                 const lastItem = container.lastElementChild;
                 if (lastItem) {
-                    lastItem.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                    lastItem.scrollIntoView({ behavior: 'auto', block: 'end', inline: 'nearest' });
                 } else {
                     // 如果没有子元素，滚动到容器本身
-                    container.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                    container.scrollIntoView({ behavior: 'auto', block: 'end', inline: 'nearest' });
                 }
-            }, 100);
+            }, 50); // 减少延迟时间从100ms到50ms
         }
 
         // 加载视频的标注数据
@@ -2201,7 +2288,7 @@
             updateObjectsList();
         }
 
-        // 渲染已保存的对象标记点
+        // 渲染已保存的对象标记点（包括已保存的和正在编辑的对象）
         function renderSavedObjects() {
             const imageContainer = document.getElementById('image-container');
             const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
@@ -2210,6 +2297,7 @@
             const imageOffsetX = (containerRect.width - imageRect.width) / 2;
             const imageOffsetY = (containerRect.height - imageRect.height) / 2;
 
+            // 渲染已保存的对象
             savedObjects.forEach((obj, objIndex) => {
                 obj.points.forEach((point, pointIdx) => {
                     // point格式应该是 [y, x] 归一化坐标 (0-1000)
@@ -2224,6 +2312,27 @@
                         { displayX, displayY },
                         objIndex,
                         true, // isSaved = true
+                        obj.name,
+                        pointIdx
+                    );
+                });
+            });
+
+            // 渲染正在编辑的对象（已标注点但未保存的对象）
+            editingObjects.forEach((obj, objIndex) => {
+                obj.points.forEach((point, pointIdx) => {
+                    // point格式应该是 [y, x] 归一化坐标 (0-1000)
+                    const normalizedX = point[1] / 1000;
+                    const normalizedY = point[0] / 1000;
+                    
+                    const displayX = normalizedX * imageRect.width + imageOffsetX;
+                    const displayY = normalizedY * imageRect.height + imageOffsetY;
+                    
+                    // 创建正在编辑的标记点（使用已保存的样式，但标记为待保存）
+                    createPointMarker(
+                        { displayX, displayY },
+                        savedObjects.length + objIndex,
+                        true, // isSaved = true（使用已保存样式）
                         obj.name,
                         pointIdx
                     );
@@ -2348,10 +2457,10 @@
             const annotationKey = `${folderPath}|${currentVideo.name}`;
             const existingAnnotation = annotations[annotationKey];
             
-            // 收集所有要保存的对象（包括正在编辑的对象）
-            const allObjectsToSave = [...savedObjects];
+            // 收集所有要保存的对象（包括已保存的、正在编辑的和当前正在编辑的对象）
+            const allObjectsToSave = [...savedObjects, ...editingObjects];
             
-            // 如果有正在编辑的对象，也添加到保存列表
+            // 如果有当前正在编辑的对象，也添加到保存列表
             if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                 const points = currentObjectPoints.map(p => [
                     Math.round(p.y * 1000),  // y坐标 (0-1000)
@@ -2435,7 +2544,11 @@
                     throw new Error('保存失败');
                 }
 
-                // 保存成功后，将正在编辑的对象也保存到 savedObjects，并重置当前编辑状态
+                // 保存成功后，将所有正在编辑的对象保存到 savedObjects，并重置状态
+                // 先将 editingObjects 中的对象保存到 savedObjects
+                savedObjects.push(...editingObjects);
+                
+                // 如果有当前正在编辑的对象，也保存到 savedObjects
                 if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                     const points = currentObjectPoints.map(p => [
                         Math.round(p.y * 1000),
@@ -2446,21 +2559,22 @@
                         points: points,
                         type: currentObjectType
                     });
-                    
-                    // 重置当前编辑状态
-                    currentObjectIndex = -1;
-                    currentObjectPoints = [];
-                    currentObjectName = '';
-                    currentObjectType = 'object';
-                    selectedPointIndex = -1;
-                    
-                    // 重新渲染标记点
-                    const imageContainer = document.getElementById('image-container');
-                    const markers = imageContainer.querySelectorAll('.point-marker');
-                    markers.forEach(marker => marker.remove());
-                    renderSavedObjects();
-                    updateObjectsList();
                 }
+                
+                // 清空所有临时编辑状态
+                editingObjects = [];
+                currentObjectIndex = -1;
+                currentObjectPoints = [];
+                currentObjectName = '';
+                currentObjectType = 'object';
+                selectedPointIndex = -1;
+                
+                // 重新渲染标记点
+                const imageContainer = document.getElementById('image-container');
+                const markers = imageContainer.querySelectorAll('.point-marker');
+                markers.forEach(marker => marker.remove());
+                renderSavedObjects();
+                updateObjectsList();
 
                 if (!silent) {
                     showStatus('标注保存成功！', 'success');
