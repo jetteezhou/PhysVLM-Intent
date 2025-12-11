@@ -10,6 +10,7 @@ import logging
 import cv2
 import tempfile
 import shutil
+import subprocess
 from pathlib import Path
 
 # 获取项目根目录路径
@@ -36,6 +37,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 def extract_last_frame(video_path: str) -> str:
     """
     提取视频的最后一帧并保存为临时图片
+    优先使用ffmpeg，如果失败则回退到OpenCV
     
     Args:
         video_path: 视频文件路径
@@ -43,7 +45,78 @@ def extract_last_frame(video_path: str) -> str:
     Returns:
         临时图片文件路径
     """
+    # 生成临时文件名
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    temp_filename = f"{video_name}_last_frame.jpg"
+    temp_path = os.path.join(TEMP_DIR, temp_filename)
+    
+    # 方法1: 尝试使用ffmpeg提取最后一帧（更可靠，特别是在Windows上）
     try:
+        logger.info(f"[提取最后一帧] 尝试使用ffmpeg提取: {video_path}")
+        
+        # 首先获取视频时长
+        probe_result = subprocess.run([
+            "ffprobe", "-v", "error", "-show_entries",
+            "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path
+        ], capture_output=True, text=True, timeout=10)
+        
+        if probe_result.returncode == 0:
+            try:
+                duration = float(probe_result.stdout.strip())
+                logger.info(f"[提取最后一帧] 视频时长: {duration}秒")
+                
+                # 方法1: 从倒数0.5秒开始提取（确保能获取到最后一帧）
+                start_time = max(0, duration - 0.5)
+                
+                extract_result = subprocess.run([
+                    "ffmpeg", "-y",
+                    "-ss", str(start_time),
+                    "-i", video_path,
+                    "-vframes", "1",
+                    "-q:v", "2",
+                    temp_path
+                ], capture_output=True, text=True, timeout=30)
+                
+                if extract_result.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                    logger.info(f"[提取最后一帧] ffmpeg提取成功: {temp_path}")
+                    return temp_path
+                else:
+                    logger.warning(f"[提取最后一帧] ffmpeg方法1失败，错误: {extract_result.stderr}")
+                    
+                    # 方法2: 尝试使用-sseof参数（从文件末尾开始）
+                    extract_result2 = subprocess.run([
+                        "ffmpeg", "-y",
+                        "-sseof", "-0.5",  # 从文件末尾倒数0.5秒开始
+                        "-i", video_path,
+                        "-vframes", "1",
+                        "-q:v", "2",
+                        temp_path
+                    ], capture_output=True, text=True, timeout=30)
+                    
+                    if extract_result2.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                        logger.info(f"[提取最后一帧] ffmpeg方法2提取成功: {temp_path}")
+                        return temp_path
+                    else:
+                        logger.warning(f"[提取最后一帧] ffmpeg方法2也失败，错误: {extract_result2.stderr}")
+                        
+            except (ValueError, subprocess.TimeoutExpired) as e:
+                logger.warning(f"[提取最后一帧] 获取视频时长失败: {e}")
+        else:
+            logger.warning(f"[提取最后一帧] ffprobe失败: {probe_result.stderr}")
+        
+        raise ValueError("ffmpeg提取失败")
+            
+    except FileNotFoundError:
+        logger.warning(f"[提取最后一帧] 未找到ffmpeg，回退到OpenCV方法")
+    except subprocess.TimeoutExpired:
+        logger.warning(f"[提取最后一帧] ffmpeg超时，回退到OpenCV方法")
+    except Exception as e:
+        logger.warning(f"[提取最后一帧] ffmpeg方法失败: {e}，回退到OpenCV方法")
+    
+    # 方法2: 回退到OpenCV方法
+    try:
+        logger.info(f"[提取最后一帧] 使用OpenCV提取: {video_path}")
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             raise ValueError(f"无法打开视频文件: {video_path}")
@@ -61,23 +134,18 @@ def extract_last_frame(video_path: str) -> str:
         if not ret:
             raise ValueError("无法读取最后一帧")
         
-        # 生成临时文件名
-        video_name = os.path.splitext(os.path.basename(video_path))[0]
-        temp_filename = f"{video_name}_last_frame.jpg"
-        temp_path = os.path.join(TEMP_DIR, temp_filename)
-        
         # 保存最后一帧
         success = cv2.imwrite(temp_path, frame)
         if not success:
             raise ValueError("保存最后一帧失败")
         
         cap.release()
-        logger.info(f"成功提取最后一帧: {temp_path}")
+        logger.info(f"[提取最后一帧] OpenCV提取成功: {temp_path}")
         return temp_path
         
     except Exception as e:
-        logger.error(f"提取最后一帧失败: {e}")
-        raise
+        logger.error(f"[提取最后一帧] 所有方法都失败: {e}")
+        raise ValueError(f"无法提取视频的最后一帧: {str(e)}")
 
 
 def scan_video_files(folder_path: str) -> list:
