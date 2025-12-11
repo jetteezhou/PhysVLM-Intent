@@ -288,14 +288,54 @@ def get_video_info():
         video_url = f'/api/simple_annotation/video/{urllib.parse.quote(os.path.basename(video_path))}?path={urllib.parse.quote(video_dir)}'
         last_frame_url = f'/api/simple_annotation/image/{urllib.parse.quote(os.path.basename(last_frame_path))}'
         
+        # 检查是否存在已有的标注数据
+        annotation = None
+        annotations_file = get_annotations_file_path(folder_path)
+        if os.path.exists(annotations_file):
+            try:
+                logger.info(f"[标注交互] 发现标注文件，尝试读取: {annotations_file}")
+                with open(annotations_file, 'r', encoding='utf-8') as f:
+                    annotations_data = json.load(f)
+                
+                # 转换为字典格式，key为 "folder|video_name"
+                annotations_dict = {}
+                if isinstance(annotations_data, list):
+                    for ann in annotations_data:
+                        key = f"{ann.get('folder', folder_path)}|{ann.get('video_name', '')}"
+                        annotations_dict[key] = ann
+                elif isinstance(annotations_data, dict):
+                    annotations_dict = annotations_data
+                
+                # 查找当前视频的标注
+                annotation_key = f"{folder_path}|{video_name}"
+                annotation = annotations_dict.get(annotation_key)
+                
+                if annotation:
+                    logger.info(f"[标注交互] 找到已有标注: {annotation_key}")
+                    # 兼容旧的objects字段和新的object_space字段
+                    object_space_list = annotation.get('object_space', annotation.get('objects', []))
+                    logger.info(f"[标注交互] 标注包含 {len(object_space_list)} 个对象/放置空间")
+                else:
+                    logger.info(f"[标注交互] 未找到该视频的标注数据")
+                    
+            except Exception as e:
+                logger.warning(f"[标注交互] 读取标注文件失败: {e}")
+                annotation = None
+        
         logger.info(f"[标注交互] 视频信息获取成功")
         
-        return jsonify({
+        response_data = {
             'success': True,
             'video_url': video_url,
             'last_frame_url': last_frame_url,
             'video_path': video_path
-        })
+        }
+        
+        # 如果有标注数据，添加到响应中
+        if annotation:
+            response_data['annotation'] = annotation
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"获取视频信息失败: {e}")
@@ -634,5 +674,5 @@ if __name__ == '__main__':
     print("📋 访问地址: http://localhost:5002")
     print("=" * 50)
     
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
 

@@ -1274,6 +1274,13 @@
                     throw new Error(errorMsg);
                 }
                 
+                // 如果后端返回了标注数据，更新全局的annotations对象
+                if (data.annotation) {
+                    const annotationKey = `${folderPath}|${currentVideo.name}`;
+                    annotations[annotationKey] = data.annotation;
+                    console.log('[标注交互] 从后端获取到标注数据:', annotationKey);
+                }
+                
                 // 设置视频播放器
                 const videoPlayer = document.getElementById('video-player');
                 videoPlayer.src = data.video_url;

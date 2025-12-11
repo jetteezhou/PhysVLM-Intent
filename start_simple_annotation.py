@@ -26,5 +26,5 @@ if __name__ == '__main__':
     print("   5. 选择视频进行标注")
     print("=" * 60)
     
-    app.run(host='0.0.0.0', port=5002, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
 
