@@ -1283,6 +1283,33 @@
                 
                 // 设置视频播放器
                 const videoPlayer = document.getElementById('video-player');
+                
+                // 添加错误处理
+                videoPlayer.onerror = function(e) {
+                    console.error('[视频播放] 视频加载失败:', e);
+                    const errorMsg = '视频无法播放。可能的原因：\n' +
+                        '1. 视频格式不支持\n' +
+                        '2. 视频文件损坏\n' +
+                        '3. 网络问题\n' +
+                        '请检查浏览器控制台获取更多信息。';
+                    alert(errorMsg);
+                    showStatus('视频加载失败，请检查控制台', 'error');
+                };
+                
+                // 添加加载事件处理
+                videoPlayer.onloadstart = function() {
+                    console.log('[视频播放] 开始加载视频:', data.video_url);
+                };
+                
+                videoPlayer.onloadeddata = function() {
+                    console.log('[视频播放] 视频数据加载完成');
+                };
+                
+                videoPlayer.oncanplay = function() {
+                    console.log('[视频播放] 视频可以播放');
+                    showLoading(false);
+                };
+                
                 videoPlayer.src = data.video_url;
                 // 设置默认播放速度为1.5倍速
                 videoPlayer.playbackRate = 1.5;

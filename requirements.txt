@@ -6,6 +6,7 @@ dashscope>=1.10.0
 
 # 视频处理
 opencv-python>=4.8.0
+ffmpeg-python>=0.2.0
 
 # LLM客户端
 openai>=1.0.0

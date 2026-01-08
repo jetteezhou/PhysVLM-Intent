@@ -151,13 +151,23 @@ def audio_to_words_with_timestamps(
                     if isinstance(sentence[0], dict):
                         print(f"调试信息: sentence[0]的键={list(sentence[0].keys())}")
             
-            if sentence and len(sentence) > 0 and "words" in sentence[0]:
-                words_list = sentence[0]["words"]
-                
-                if not words_list or len(words_list) == 0:
-                    error_msg = "识别结果为空：API返回成功但未识别到任何词汇"
-                    print(f"警告：{error_msg}")
-                    return False, [], error_msg
+            # 遍历所有sentence，收集所有有words的sentence的words
+            words_list = []
+            if sentence and len(sentence) > 0:
+                for idx, sent in enumerate(sentence):
+                    if isinstance(sent, dict) and "words" in sent:
+                        sent_words = sent.get("words", [])
+                        if sent_words and len(sent_words) > 0:
+                            words_list.extend(sent_words)
+                            print(f"调试信息: sentence[{idx}]包含{len(sent_words)}个词汇")
+                        else:
+                            print(f"调试信息: sentence[{idx}]的words为空")
+                    else:
+                        print(f"调试信息: sentence[{idx}]格式不正确或缺少words键")
+            
+            # 如果至少有一个sentence有words，就认为识别成功
+            if words_list and len(words_list) > 0:
+                print(f"调试信息: 总共收集到{len(words_list)}个词汇")
                 
                 # 打印识别指标
                 print(f'[Metric] requestId: {recognition.get_last_request_id()}, '
@@ -173,20 +183,19 @@ def audio_to_words_with_timestamps(
                 elif len(sentence) == 0:
                     error_details.append("sentence为空列表")
                 elif len(sentence) > 0:
-                    if not isinstance(sentence[0], dict):
-                        error_details.append(f"sentence[0]不是字典类型，而是{type(sentence[0])}")
-                    elif "words" not in sentence[0]:
-                        error_details.append(f"sentence[0]中缺少'words'键，现有键为: {list(sentence[0].keys())}")
+                    error_details.append(f"所有{len(sentence)}个sentence的words都为空或格式不正确")
+                else:
+                    error_details.append("sentence格式不正确")
                 
-                error_msg = f"识别结果为空：API返回成功但结果格式不正确 ({'; '.join(error_details)})"
-                print(f"错误：{error_msg}")
+                error_msg = f"识别结果为空：API返回成功但未识别到任何词汇 ({'; '.join(error_details)})"
+                print(f"警告：{error_msg}")
                 print(f"完整返回内容: sentence={sentence}")
                 if sentence and len(sentence) > 0:
                     import json
                     try:
-                        print(f"sentence[0]的JSON格式: {json.dumps(sentence[0], ensure_ascii=False, indent=2)}")
+                        print(f"所有sentence的JSON格式: {json.dumps(sentence, ensure_ascii=False, indent=2)}")
                     except:
-                        print(f"sentence[0]无法序列化为JSON: {sentence[0]}")
+                        print(f"sentence无法序列化为JSON")
                 return False, [], error_msg
         else:
             error_msg = f"语音识别API调用失败 (状态码: {result.status_code}): {result.message}"

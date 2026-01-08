@@ -1,5 +1,6 @@
 """Pipeline主模块"""
-from .pipeline import IntentLabelPipeline
+# IntentLabelPipeline 类尚未实现，暂时移除导入
+# from .pipeline import IntentLabelPipeline
 
-__all__ = ['IntentLabelPipeline']
+__all__ = []
 

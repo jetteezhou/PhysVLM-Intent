@@ -1,224 +1,99 @@
-# PhysVLM-Intent 项目
+# PhysVLM-Intent
 
-意图推理与目标定位数据标注Pipeline项目
-
-## 📁 项目结构
-
-```
-PhysVLM-Intent/
-├── pipeline/                    # Pipeline核心模块
-│   ├── __init__.py
-│   ├── pipeline.py             # 主Pipeline类
-│   ├── audio_processor.py      # 音频处理模块（ASR）
-│   ├── video_processor.py      # 视频处理模块（分割、帧采样）
-│   └── llm_client.py           # LLM客户端模块（意图分析、目标定位）
-├── config/                      # 配置模块
-│   ├── __init__.py
-│   └── settings.py             # 配置和常量
-├── utils/                       # 工具函数模块
-│   ├── __init__.py
-│   └── image_utils.py          # 图像处理工具
-├── tools/                       # 工具和脚本
-│   ├── annotation/             # 标注工具
-│   │   ├── annotation_server.py
-│   │   ├── annotation_tool.html
-│   │   ├── start_annotation_tool.py
-│   │   └── requirements_annotation.txt
-│   ├── data_collection/        # 数据采集工具
-│   │   ├── collection_server.py
-│   │   ├── collection_tool.html
-│   │   └── start_collection_tool.py
-│   └── sam/                    # SAM分割工具
-│       └── sam_test.py
-├── docs/                        # 文档
-│   ├── README_PIPELINE.md      # Pipeline使用说明
-│   ├── README_annotation.md    # 标注工具使用说明
-│   └── QUICK_START.md          # 快速开始指南
-├── models/                      # 模型文件
-│   └── sam2.1_b.pt            # SAM模型
-├── unified_server.py            # 统一Web应用服务器（推荐）
-├── start_unified_app.py         # 启动统一Web应用（便捷脚本）
-├── start_pipeline.py            # 启动标注生成Pipeline（单元测试用）
-├── start_annotation.py          # 启动标注检验工具（单元测试用）
-├── start_collection.py          # 启动数据采集工具（单元测试用）
-├── data_label_gen_pipeline.py   # Pipeline主入口文件（向后兼容）
-├── web_html/                    # Web前端页面
-│   ├── collection_tool.html     # 数据采集工具页面（用于统一应用）
-│   └── annotation_tool.html     # 标注工具页面（用于统一应用）
-└── requirements.txt             # 项目依赖
-```
+一个用于意图推理与目标定位的视频数据标注工具集，支持视频标注、语音识别（ASR）和跨平台路径自动解析。
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 1. 环境要求
+
+- Python 3.8+
+- ffmpeg（用于视频处理）
+- 支持的浏览器（Chrome、Firefox、Safari、Edge）
+
+### 2. 安装依赖
 
 ```bash
+# 安装项目依赖
 pip install -r requirements.txt
+
+# 安装标注工具额外依赖（如果需要）
+pip install -r tools/annotation/requirements_annotation.txt
 ```
 
-### 2. 配置API密钥
+### 3. 配置 API 密钥
 
 设置环境变量或修改 `config/settings.py`：
 
 ```bash
+# DashScope API（用于 ASR 语音识别）
 export DASHSCOPE_API_KEY="your-dashscope-api-key"
+
+# OpenAI API（如果需要使用 OpenAI 模型）
 export OPENAI_API_KEY="your-openai-api-key"
-export OPENAI_BASE_URL="http://localhost:8000/v1"
+export OPENAI_BASE_URL="http://localhost:8000/v1"  # 可选，用于本地部署的模型
 ```
 
-### 3. 使用统一Web应用（推荐）⭐
-
-运行统一Web应用，在浏览器中完成所有操作：
+### 4. 启动标注工具
 
 ```bash
-python start_unified_app.py
+python start_simple_annotation.py
 ```
 
-访问 **http://localhost:5000** 打开统一应用界面。
+启动后访问：**http://localhost:5001**
 
-统一应用包含三个模块：
-- 📹 **数据采集** - 管理采集任务和视频数据
-- 🎬 **标注生成** - 运行Pipeline并实时查看进度
-- ✏️ **标注检验** - 人工检验和修正标注结果
+## 📖 使用指南
 
-**特色功能**：
-- ✅ 实时进度显示（进度条 + 日志）
-- ✅ WebSocket实时更新
-- ✅ 完成后自动跳转到标注检验页面
-- ✅ 统一的用户界面
+### 简易标注工具使用流程
 
-详细使用说明请查看：[统一应用使用指南](docs/UNIFIED_APP_GUIDE.md)
+1. **选择文件夹**
+   - 在浏览器中打开 http://localhost:5001
+   - 输入包含视频文件的文件夹路径（支持绝对路径和相对路径）
+   - 点击"扫描视频"按钮
 
-### 4. 单独运行各个模块（单元测试）
+2. **加载视频**
+   - 系统会自动扫描文件夹下的所有视频文件（支持 .mp4, .mov, .avi, .mkv 等格式）
+   - 选择要标注的视频
 
-如果需要单独测试某个模块，可以使用以下脚本：
+3. **进行标注**
+   - 查看视频最后一帧预览图
+   - 点击"ASR识别"按钮进行语音识别（可选）
+   - 在预览图上点击标注对象或放置空间
+   - 输入对象名称和类型（object/space）
+   - 可以标注多个对象
 
-#### 启动数据采集模块
+4. **保存标注**
+   - 点击"保存标注"按钮
+   - 标注数据会保存到文件夹下的 `annotations.json` 文件
 
-```bash
-python start_collection.py
+### 标注数据格式
+
+标注数据保存在 `annotations.json` 文件中，格式如下：
+
+```json
+[
+  {
+    "id": "时间戳",
+    "folder": "文件夹路径",
+    "video_name": "视频文件名",
+    "task_template": "任务模板",
+    "scene": "场景名称",
+    "object_space": [
+      {
+        "name": "对象名称",
+        "type": "object",  // 或 "space"
+        "points": [
+          [x1, y1],
+          [x2, y2],
+          ...
+        ]
+      }
+    ],
+    "is_invalid": false,
+    "asr_result": {
+      "text": "识别的文本",
+      "sentences": [...],
+      "words": [...]
+    }
+  }
+]
 ```
-
-访问 http://localhost:5001 进行数据采集。
-
-#### 启动标注生成Pipeline
-
-```bash
-python start_pipeline.py
-```
-
-或使用向后兼容的入口：
-
-```bash
-python data_label_gen_pipeline.py
-```
-
-#### 启动标注检验模块
-
-```bash
-python start_annotation.py
-```
-
-访问 http://localhost:5001 进行标注检验。
-
-## 📚 文档
-
-- [统一应用使用指南](docs/UNIFIED_APP_GUIDE.md) - **统一Web应用详细文档（推荐阅读）** ⭐
-- [Pipeline使用说明](docs/README_PIPELINE.md) - Pipeline详细文档
-- [标注工具使用说明](docs/README_annotation.md) - 标注工具详细文档
-- [快速开始指南](docs/QUICK_START.md) - 快速入门指南
-
-## 🔧 主要功能
-
-1. **统一Web应用** (`unified_server.py` + `unified_app.html`) ⭐
-   - 整合数据采集、标注生成和人工检验的完整流程
-   - 实时进度显示（进度条 + 日志）
-   - WebSocket实时更新
-   - 统一的用户界面
-   - 完成后自动跳转
-
-2. **意图推理Pipeline** (`pipeline/`)
-   - 语音识别（ASR）
-   - 视频分割和帧采样
-   - 意图分析
-   - 目标定位
-
-3. **标注检验工具** (`tools/annotation/`)
-   - Web界面标注
-   - 可视化修正
-   - 数据备份和管理
-   - 支持相对路径和绝对路径
-
-4. **数据采集工具** (`tools/data_collection/`)
-   - 管理员模式：管理任务模板和场景类型
-   - 采集模式：创建采集任务，管理视频数据
-   - 自动统计视频数量
-   - 视频预览功能
-
-6. **SAM分割工具** (`tools/sam/`)
-   - 视频对象分割
-   - 多目标跟踪
-
-## 📝 使用示例
-
-### Pipeline使用
-
-```python
-from pipeline import IntentLabelPipeline
-from config import Config
-
-config = Config.from_env()
-pipeline = IntentLabelPipeline(config)
-result = pipeline.process(audio_path, video_path)
-```
-
-### 标注工具
-
-访问 `http://localhost:5000` 使用Web界面进行标注。
-
-### 数据采集工具
-
-访问 `http://localhost:5001` 使用Web界面进行数据采集：
-
-1. **管理员模式**：
-   - 创建和管理任务模板（包含任务指令、场景类型、目标数量、任务说明）
-   - 创建和管理场景类型（包含场景名称和描述）
-
-2. **采集模式**：
-   - 选择任务模板和场景类型创建采集任务
-   - 系统自动创建文件夹（位于 `collected_data/` 目录）
-   - 将视频文件复制到创建的文件夹中
-   - 点击"扫描文件夹"自动统计视频数量
-   - 点击"查看详情"预览视频文件
-   - 完成任务后标记为已完成
-
-## 📄 输出
-
-Pipeline会生成 `pipeline_data.json` 文件，包含：
-- 视频信息和描述
-- 物品描述和定位点
-- 图像尺寸信息
-
-## 📂 数据目录
-
-- `pipeline/outputs/`: Pipeline输出数据
-  - `pipeline_data.json`: 标注数据文件
-  - `output_frames/`: 视频帧图像
-- `annotation_backups/`: 标注工具备份文件
-- `tools/data_collection/datas/`: 采集的视频数据存储目录
-- `tools/data_collection/task_config/`: 数据采集工具配置文件（任务模板、场景类型、采集任务记录）
-
-## 🔗 相关链接
-
-- 统一应用使用指南: [docs/UNIFIED_APP_GUIDE.md](docs/UNIFIED_APP_GUIDE.md) - **推荐阅读** ⭐
-- Pipeline文档: [docs/README_PIPELINE.md](docs/README_PIPELINE.md)
-- 标注工具文档: [docs/README_annotation.md](docs/README_annotation.md)
-
-## ✨ 新特性
-
-- ✅ **统一Web应用**：整合数据采集、标注生成和人工检验的完整流程，支持实时进度显示 ⭐
-- ✅ **模块化设计**：三个模块可独立启动进行单元测试
-- ✅ **路径自动对齐**：自动处理相对路径和绝对路径，确保各流程无缝衔接
-- ✅ **从采集任务选择视频**：Pipeline支持直接从采集任务中选择视频进行处理
-- ✅ **实时进度显示**：Pipeline处理过程实时显示进度条和日志
-
