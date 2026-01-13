@@ -15,7 +15,12 @@ import cv2
 import tempfile
 import shutil
 import subprocess
+import hashlib
+import time
+import platform
 from pathlib import Path
+from threading import Lock
+from collections import OrderedDict
 
 # 获取项目根目录路径
 PROJECT_ROOT = os.path.dirname(os.path.dirname(
@@ -41,11 +46,152 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 WINDOWS_TEMP_DIR = os.path.join(PROJECT_ROOT, 'Windows_temp')
 os.makedirs(WINDOWS_TEMP_DIR, exist_ok=True)
 
+# 缓存配置
+CACHE_MAX_SIZE_MB = 500  # 最大缓存大小（MB）
+CACHE_MAX_AGE_HOURS = 24  # 缓存文件最大保留时间（小时）
+CACHE_CLEANUP_INTERVAL = 3600  # 清理间隔（秒）
+
+# 缓存管理锁
+_cache_lock = Lock()
+
+# 文件访问时间记录（用于LRU缓存清理）
+_file_access_times = OrderedDict()
+
+
+def get_file_hash(file_path: str) -> str:
+    """计算文件的MD5哈希值（用于缓存键）"""
+    try:
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            # 只读取文件的前1MB来计算hash（提高性能）
+            chunk = f.read(1024 * 1024)
+            hash_md5.update(chunk)
+            # 同时使用文件大小和修改时间
+            stat = os.stat(file_path)
+            hash_md5.update(str(stat.st_size).encode())
+            hash_md5.update(str(int(stat.st_mtime)).encode())
+        return hash_md5.hexdigest()
+    except Exception as e:
+        logger.warning(f"计算文件hash失败: {e}")
+        # 如果计算hash失败，使用文件名和修改时间
+        try:
+            stat = os.stat(file_path)
+            return hashlib.md5(f"{file_path}_{stat.st_mtime}".encode()).hexdigest()
+        except:
+            return hashlib.md5(file_path.encode()).hexdigest()
+
+
+def update_file_access_time(file_path: str):
+    """更新文件访问时间（用于LRU缓存管理）"""
+    with _cache_lock:
+        if file_path in _file_access_times:
+            _file_access_times.move_to_end(file_path)
+        else:
+            _file_access_times[file_path] = time.time()
+        # 限制字典大小，避免内存占用过大
+        if len(_file_access_times) > 1000:
+            _file_access_times.popitem(last=False)
+
+
+def cleanup_temp_files(max_age_hours: int = CACHE_MAX_AGE_HOURS, max_size_mb: int = CACHE_MAX_SIZE_MB):
+    """
+    清理临时文件
+    策略：
+    1. 删除超过最大保留时间的文件
+    2. 如果总大小超过限制，删除最久未访问的文件（LRU）
+    """
+    try:
+        temp_dirs = [TEMP_DIR]
+        if platform.system() == 'Windows':
+            temp_dirs.append(WINDOWS_TEMP_DIR)
+
+        current_time = time.time()
+        max_age_seconds = max_age_hours * 3600
+        max_size_bytes = max_size_mb * 1024 * 1024
+
+        total_size = 0
+        files_info = []
+
+        # 收集所有文件信息
+        for temp_dir in temp_dirs:
+            if not os.path.exists(temp_dir):
+                continue
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        stat = os.stat(file_path)
+                        file_age = current_time - stat.st_mtime
+                        file_size = stat.st_size
+                        access_time = _file_access_times.get(
+                            file_path, stat.st_mtime)
+
+                        files_info.append({
+                            'path': file_path,
+                            'size': file_size,
+                            'age': file_age,
+                            'access_time': access_time,
+                            'mtime': stat.st_mtime
+                        })
+                        total_size += file_size
+                    except Exception as e:
+                        logger.debug(f"无法获取文件信息 {file_path}: {e}")
+
+        # 按访问时间排序（最久未访问的在前面）
+        files_info.sort(key=lambda x: x['access_time'])
+
+        deleted_count = 0
+        deleted_size = 0
+
+        # 1. 删除超过最大保留时间的文件
+        for file_info in files_info[:]:
+            if file_info['age'] > max_age_seconds:
+                try:
+                    os.remove(file_info['path'])
+                    deleted_count += 1
+                    deleted_size += file_info['size']
+                    total_size -= file_info['size']
+                    files_info.remove(file_info)
+                    if file_info['path'] in _file_access_times:
+                        del _file_access_times[file_info['path']]
+                    logger.debug(f"删除过期文件: {file_info['path']}")
+                except Exception as e:
+                    logger.warning(f"删除文件失败 {file_info['path']}: {e}")
+
+        # 2. 如果总大小超过限制，删除最久未访问的文件（LRU）
+        while total_size > max_size_bytes and files_info:
+            file_info = files_info.pop(0)
+            try:
+                os.remove(file_info['path'])
+                deleted_count += 1
+                deleted_size += file_info['size']
+                total_size -= file_info['size']
+                if file_info['path'] in _file_access_times:
+                    del _file_access_times[file_info['path']]
+                logger.debug(f"删除LRU文件: {file_info['path']}")
+            except Exception as e:
+                logger.warning(f"删除文件失败 {file_info['path']}: {e}")
+
+        if deleted_count > 0:
+            logger.info(
+                f"[缓存清理] 删除了 {deleted_count} 个文件，释放 {deleted_size / 1024 / 1024:.2f} MB 空间")
+
+        return deleted_count, deleted_size
+
+    except Exception as e:
+        logger.error(f"[缓存清理] 清理临时文件失败: {e}")
+        return 0, 0
+
+
+# 启动时清理一次
+cleanup_temp_files()
+
 
 def extract_last_frame(video_path: str) -> str:
     """
     提取视频的最后一帧并保存为临时图片
     优先使用ffmpeg，如果失败则回退到OpenCV
+    使用文件hash作为缓存键，避免重复提取
 
     Args:
         video_path: 视频文件路径
@@ -53,16 +199,42 @@ def extract_last_frame(video_path: str) -> str:
     Returns:
         临时图片文件路径
     """
-    # 生成临时文件名
+    # 使用文件hash作为缓存键
+    file_hash = get_file_hash(video_path)
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    temp_filename = f"{video_name}_last_frame.jpg"
+    temp_filename = f"{video_name}_{file_hash[:8]}_last_frame.jpg"
     temp_path = os.path.join(TEMP_DIR, temp_filename)
+
+    # 如果缓存文件存在且有效，直接返回
+    if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+        update_file_access_time(temp_path)
+        logger.debug(f"[提取最后一帧] 使用缓存: {temp_path}")
+        return temp_path
 
     # 方法1: 尝试使用ffmpeg提取最后一帧（更可靠，特别是在Windows上）
     try:
         logger.info(f"[提取最后一帧] 尝试使用ffmpeg提取: {video_path}")
 
-        # 首先获取视频时长
+        # 优化：优先使用 -sseof 参数，避免调用 ffprobe 获取时长，减少子进程开销
+        extract_result = subprocess.run([
+            "ffmpeg", "-y",
+            "-sseof", "-0.1",  # 从文件末尾倒数 0.1 秒开始，通常能快速命中最后一帧
+            "-i", video_path,
+            "-update", "1",
+            "-vframes", "1",
+            "-q:v", "2",
+            temp_path
+        ], capture_output=True, text=True, timeout=15, encoding='utf-8', errors='replace')
+
+        if extract_result.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+            update_file_access_time(temp_path)
+            logger.info(f"[提取最后一帧] ffmpeg -sseof 提取成功: {temp_path}")
+            return temp_path
+
+        logger.warning(
+            f"[提取最后一帧] ffmpeg -sseof 失败，尝试常规方法: {extract_result.stderr}")
+
+        # 如果 -sseof 失败（某些老版本 ffmpeg 不支持），再尝试获取时长的方法
         probe_result = subprocess.run([
             "ffprobe", "-v", "error", "-show_entries",
             "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
@@ -72,10 +244,7 @@ def extract_last_frame(video_path: str) -> str:
         if probe_result.returncode == 0:
             try:
                 duration = float(probe_result.stdout.strip())
-                logger.info(f"[提取最后一帧] 视频时长: {duration}秒")
-
-                # 方法1: 从倒数0.5秒开始提取（确保能获取到最后一帧）
-                start_time = max(0, duration - 0.5)
+                start_time = max(0, duration - 0.2)  # 缩短搜寻范围
 
                 extract_result = subprocess.run([
                     "ffmpeg", "-y",
@@ -84,38 +253,16 @@ def extract_last_frame(video_path: str) -> str:
                     "-vframes", "1",
                     "-q:v", "2",
                     temp_path
-                ], capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
+                ], capture_output=True, text=True, timeout=20, encoding='utf-8', errors='replace')
 
                 if extract_result.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                    logger.info(f"[提取最后一帧] ffmpeg提取成功: {temp_path}")
+                    update_file_access_time(temp_path)
+                    logger.info(f"[提取最后一帧] ffmpeg -ss 提取成功: {temp_path}")
                     return temp_path
-                else:
-                    logger.warning(
-                        f"[提取最后一帧] ffmpeg方法1失败，错误: {extract_result.stderr}")
+            except:
+                pass
 
-                    # 方法2: 尝试使用-sseof参数（从文件末尾开始）
-                    extract_result2 = subprocess.run([
-                        "ffmpeg", "-y",
-                        "-sseof", "-0.5",  # 从文件末尾倒数0.5秒开始
-                        "-i", video_path,
-                        "-vframes", "1",
-                        "-q:v", "2",
-                        temp_path
-                    ], capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
-
-                    if extract_result2.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                        logger.info(f"[提取最后一帧] ffmpeg方法2提取成功: {temp_path}")
-                        return temp_path
-                    else:
-                        logger.warning(
-                            f"[提取最后一帧] ffmpeg方法2也失败，错误: {extract_result2.stderr}")
-
-            except (ValueError, subprocess.TimeoutExpired) as e:
-                logger.warning(f"[提取最后一帧] 获取视频时长失败: {e}")
-        else:
-            logger.warning(f"[提取最后一帧] ffprobe失败: {probe_result.stderr}")
-
-        raise ValueError("ffmpeg提取失败")
+        raise ValueError("ffmpeg所有提取方法均失败")
 
     except FileNotFoundError:
         logger.warning(f"[提取最后一帧] 未找到ffmpeg，回退到OpenCV方法")
@@ -150,6 +297,7 @@ def extract_last_frame(video_path: str) -> str:
             raise ValueError("保存最后一帧失败")
 
         cap.release()
+        update_file_access_time(temp_path)
         logger.info(f"[提取最后一帧] OpenCV提取成功: {temp_path}")
         return temp_path
 
@@ -202,6 +350,7 @@ def convert_video_for_browser(video_path: str, force_convert: bool = False) -> s
     将视频转换为浏览器兼容的MP4格式
     如果视频已经是MP4格式且浏览器兼容，则直接返回原文件路径
     否则转换为MP4格式并保存到临时目录
+    使用文件hash作为缓存键，避免重复转换
 
     Args:
         video_path: 原始视频文件路径
@@ -210,17 +359,17 @@ def convert_video_for_browser(video_path: str, force_convert: bool = False) -> s
     Returns:
         转换后的MP4文件路径（如果已经是兼容格式则返回原路径）
     """
-    import platform
-
     # 检查文件扩展名
     file_ext = os.path.splitext(video_path)[1].lower()
 
     # 浏览器兼容的格式列表（主要是MP4）
     browser_compatible_formats = {'.mp4'}
 
-    # 生成转换后的文件名，Windows 使用专用目录
+    # 使用文件hash作为缓存键，避免重复转换
+    file_hash = get_file_hash(video_path)
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    converted_filename = f"{video_name}_converted.mp4"
+    converted_filename = f"{video_name}_{file_hash[:8]}_converted.mp4"
+
     # Windows 转换的视频存放在 Windows_temp 目录
     if platform.system() == 'Windows':
         converted_path = os.path.join(WINDOWS_TEMP_DIR, converted_filename)
@@ -229,6 +378,7 @@ def convert_video_for_browser(video_path: str, force_convert: bool = False) -> s
 
     # 如果转换后的文件已存在，直接返回
     if os.path.exists(converted_path) and os.path.getsize(converted_path) > 0:
+        update_file_access_time(converted_path)
         logger.info(f"[视频转换] 使用已存在的转换文件: {converted_path}")
         return converted_path
 
@@ -245,8 +395,12 @@ def convert_video_for_browser(video_path: str, force_convert: bool = False) -> s
             logger.info(f"[视频转换] 视频格式已兼容: {video_path}")
             return video_path
     elif not force_convert:
-        # 需要转换格式
-        logger.info(f"[视频转换] 开始转换视频格式: {video_path} (格式: {file_ext})")
+        # 需要转换格式（MOV等格式在Windows上需要转换）
+        # 特别处理MOV格式：Windows下通常需要转换
+        if platform.system() == 'Windows' and file_ext in {'.mov', '.MOV'}:
+            logger.info(f"[视频转换] [Windows兼容] MOV格式需要转换: {video_path}")
+        else:
+            logger.info(f"[视频转换] 开始转换视频格式: {video_path} (格式: {file_ext})")
     else:
         logger.info(f"[视频转换] [Windows兼容] 强制转换视频: {video_path}")
 
@@ -267,7 +421,13 @@ def convert_video_for_browser(video_path: str, force_convert: bool = False) -> s
         ], capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')  # 5分钟超时
 
         if result.returncode == 0 and os.path.exists(converted_path) and os.path.getsize(converted_path) > 0:
+            update_file_access_time(converted_path)
             logger.info(f"[视频转换] 视频转换成功: {converted_path}")
+            # 触发清理检查（异步，不阻塞）
+            try:
+                cleanup_temp_files()
+            except:
+                pass
             return converted_path
         else:
             error_msg = result.stderr if result.stderr else "未知错误"
@@ -298,8 +458,6 @@ def is_valid_video_file(file_path: str) -> bool:
     Returns:
         如果是有效视频文件返回 True，否则返回 False
     """
-    import platform
-
     # 获取文件名
     filename = os.path.basename(file_path)
 
@@ -321,16 +479,27 @@ def is_valid_video_file(file_path: str) -> bool:
     return True
 
 
+# 文件夹内容缓存
+_folder_contents_cache = {}
+
+
 def scan_video_files(folder_path: str) -> list:
     """
     扫描文件夹下的所有视频文件
-
-    Args:
-        folder_path: 文件夹路径
-
-    Returns:
-        视频文件列表，每个元素包含 name 和 path
+    使用缓存优化性能
     """
+    # 检查缓存
+    with _cache_lock:
+        if folder_path in _folder_contents_cache:
+            cache_entry = _folder_contents_cache[folder_path]
+            # 检查文件夹是否发生变化（通过修改时间）
+            try:
+                if os.path.getmtime(folder_path) <= cache_entry['mtime']:
+                    logger.debug(f"[扫描视频] 使用缓存: {folder_path}")
+                    return cache_entry['videos']
+            except:
+                pass
+
     video_extensions = {'.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v'}
     videos = []
 
@@ -353,6 +522,17 @@ def scan_video_files(folder_path: str) -> list:
                     })
 
         logger.info(f"扫描到 {len(videos)} 个视频文件")
+
+        # 更新缓存
+        with _cache_lock:
+            _folder_contents_cache[folder_path] = {
+                'videos': videos,
+                'mtime': os.path.getmtime(folder_path) if os.path.exists(folder_path) else 0
+            }
+            # 限制缓存大小
+            if len(_folder_contents_cache) > 100:
+                _folder_contents_cache.clear()
+
         return videos
 
     except Exception as e:
@@ -360,117 +540,122 @@ def scan_video_files(folder_path: str) -> list:
         raise
 
 
+# 路径解析缓存
+_path_resolution_cache = {}
+
+
 def resolve_folder_path(annotation_folder: str, current_folder_path: str = None) -> str:
     """
     解析标注文件中的文件夹路径，支持绝对路径和相对路径的回退
+    使用缓存优化性能
 
     策略：
     1. 先尝试使用绝对路径
     2. 如果绝对路径不存在，从绝对路径中提取相对路径部分
     3. 在项目 data 目录下查找相对路径
     4. 支持 Windows 和 Mac/Linux 的路径自动转换
-
-    Args:
-        annotation_folder: 标注文件中记录的文件夹路径（可能是绝对路径或相对路径）
-        current_folder_path: 当前操作的文件夹路径（用于回退查找）
-
-    Returns:
-        解析后的有效文件夹路径，如果都找不到则返回原始路径
     """
     if not annotation_folder:
         return current_folder_path or ''
+
+    # 使用缓存
+    cache_key = f"{annotation_folder}|{current_folder_path}"
+    with _cache_lock:
+        if cache_key in _path_resolution_cache:
+            return _path_resolution_cache[cache_key]
 
     # 标准化路径分隔符（统一使用当前系统的分隔符）
     normalized_path = annotation_folder.replace(
         '\\', os.sep).replace('/', os.sep)
 
-    # 检测是否为 Windows 绝对路径（以驱动器字母开头，如 C:\ 或 C:/）
-    is_windows_abs = False
-    if len(normalized_path) >= 2 and normalized_path[1] == ':':
-        is_windows_abs = True
+    def _resolve():
+        # 检测是否为 Windows 绝对路径（以驱动器字母开头，如 C:\ 或 C:/）
+        is_windows_abs = False
+        if len(normalized_path) >= 2 and normalized_path[1] == ':':
+            is_windows_abs = True
 
-    # 检测是否为 Unix/Mac 绝对路径
-    is_unix_abs = os.path.isabs(normalized_path)
+        # 检测是否为 Unix/Mac 绝对路径
+        is_unix_abs = os.path.isabs(normalized_path)
 
-    # 策略1: 先尝试直接使用绝对路径
-    if is_unix_abs or is_windows_abs:
-        if is_unix_abs and os.path.exists(normalized_path):
-            logger.debug(f"[路径解析] 使用绝对路径: {normalized_path}")
+        # 策略1: 先尝试直接使用绝对路径
+        if is_unix_abs or is_windows_abs:
+            if is_unix_abs and os.path.exists(normalized_path):
+                logger.debug(f"[路径解析] 使用绝对路径: {normalized_path}")
+                return normalized_path
+            logger.debug(f"[路径解析] 绝对路径不存在: {normalized_path}")
+
+        # 策略2: 如果是绝对路径但不存在，尝试提取相对路径部分
+        if is_unix_abs or is_windows_abs:
+            # 从绝对路径中提取最后几级目录作为相对路径
+            path_str = normalized_path.replace(
+                '\\', os.sep).replace('/', os.sep)
+            path_parts = [part for part in path_str.split(os.sep) if part]
+
+            # 尝试从后往前提取路径部分，最多提取5级目录
+            for i in range(1, min(len(path_parts) + 1, 6)):
+                relative_parts = path_parts[-i:]
+                relative_path = os.path.join(*relative_parts)
+
+                # 在项目 data 目录下查找
+                data_dir = os.path.join(PROJECT_ROOT, 'data')
+                candidate_path = os.path.join(data_dir, relative_path)
+
+                if os.path.exists(candidate_path):
+                    logger.info(
+                        f"[路径解析] 找到相对路径: {candidate_path} (从 {normalized_path} 提取，相对路径: {relative_path})")
+                    return candidate_path
+
+                # 也在当前文件夹的父目录中查找
+                if current_folder_path:
+                    parent_dir = os.path.dirname(current_folder_path)
+                    candidate_path = os.path.join(parent_dir, relative_path)
+                    if os.path.exists(candidate_path):
+                        logger.info(
+                            f"[路径解析] 在当前文件夹父目录找到: {candidate_path} (相对路径: {relative_path})")
+                        return candidate_path
+
+            logger.warning(f"[路径解析] 无法解析路径: {normalized_path}，使用原始路径")
             return normalized_path
-        logger.debug(f"[路径解析] 绝对路径不存在: {normalized_path}")
 
-    # 策略2: 如果是绝对路径但不存在，尝试提取相对路径部分
-    if is_unix_abs or is_windows_abs:
-        # 从绝对路径中提取最后几级目录作为相对路径
-        # 例如: C:\Users\周宇轩\Desktop\测试区_场景1_马耀光_周宇轩_拍摄\指令1
-        # 提取: 测试区_场景1_马耀光_周宇轩_拍摄\指令1
-
-        # 手动分割路径（兼容 Windows 和 Unix 路径）
-        # 先统一使用当前系统的路径分隔符
-        path_str = normalized_path.replace('\\', os.sep).replace('/', os.sep)
-        # 分割路径部分
-        path_parts = [part for part in path_str.split(os.sep) if part]
-
-        # 尝试从后往前提取路径部分，最多提取5级目录
-        for i in range(1, min(len(path_parts) + 1, 6)):
-            relative_parts = path_parts[-i:]
-            relative_path = os.path.join(*relative_parts)
-
-            # 在项目 data 目录下查找
+        # 策略3: 如果已经是相对路径，尝试在 data 目录下查找
+        if not os.path.isabs(normalized_path):
             data_dir = os.path.join(PROJECT_ROOT, 'data')
-            candidate_path = os.path.join(data_dir, relative_path)
-
+            candidate_path = os.path.join(data_dir, normalized_path)
             if os.path.exists(candidate_path):
-                logger.info(
-                    f"[路径解析] 找到相对路径: {candidate_path} (从 {normalized_path} 提取，相对路径: {relative_path})")
+                logger.info(f"[路径解析] 在 data 目录找到相对路径: {candidate_path}")
                 return candidate_path
 
             # 也在当前文件夹的父目录中查找
             if current_folder_path:
                 parent_dir = os.path.dirname(current_folder_path)
-                candidate_path = os.path.join(parent_dir, relative_path)
+                candidate_path = os.path.join(parent_dir, normalized_path)
                 if os.path.exists(candidate_path):
-                    logger.info(
-                        f"[路径解析] 在当前文件夹父目录找到: {candidate_path} (相对路径: {relative_path})")
+                    logger.info(f"[路径解析] 在当前文件夹父目录找到相对路径: {candidate_path}")
                     return candidate_path
 
-        logger.warning(f"[路径解析] 无法解析路径: {normalized_path}，使用原始路径")
-        return normalized_path
-
-    # 策略3: 如果已经是相对路径，尝试在 data 目录下查找
-    if not os.path.isabs(normalized_path):
-        data_dir = os.path.join(PROJECT_ROOT, 'data')
-        candidate_path = os.path.join(data_dir, normalized_path)
-        if os.path.exists(candidate_path):
-            logger.info(f"[路径解析] 在 data 目录找到相对路径: {candidate_path}")
-            return candidate_path
-
-        # 也在当前文件夹的父目录中查找
-        if current_folder_path:
-            parent_dir = os.path.dirname(current_folder_path)
-            candidate_path = os.path.join(parent_dir, normalized_path)
+        # 策略4: 如果都找不到，尝试直接使用（可能是相对于当前工作目录）
+        if not os.path.isabs(normalized_path):
+            data_dir = os.path.join(PROJECT_ROOT, 'data')
+            candidate_path = os.path.join(data_dir, normalized_path)
             if os.path.exists(candidate_path):
-                logger.info(f"[路径解析] 在当前文件夹父目录找到相对路径: {candidate_path}")
+                logger.info(f"[路径解析] 在项目data目录找到路径: {candidate_path}")
                 return candidate_path
 
-    # 策略4: 如果都找不到，尝试直接使用（可能是相对于当前工作目录）
-    # 但优先检查是否在项目data目录下
-    if not os.path.isabs(normalized_path):
-        # 对于相对路径，先检查项目data目录
-        data_dir = os.path.join(PROJECT_ROOT, 'data')
-        candidate_path = os.path.join(data_dir, normalized_path)
-        if os.path.exists(candidate_path):
-            logger.info(f"[路径解析] 在项目data目录找到路径: {candidate_path}")
-            return candidate_path
+        if os.path.exists(normalized_path):
+            logger.info(f"[路径解析] 使用直接路径: {normalized_path}")
+            return normalized_path
 
-    # 最后尝试直接使用（相对于当前工作目录）
-    if os.path.exists(normalized_path):
-        logger.info(f"[路径解析] 使用直接路径: {normalized_path}")
+        logger.warning(f"[路径解析] 所有策略都失败，返回原始路径: {normalized_path}")
         return normalized_path
 
-    # 最后回退：如果都找不到，返回原始路径（让调用者处理）
-    logger.warning(f"[路径解析] 所有策略都失败，返回原始路径: {normalized_path}")
-    return normalized_path
+    resolved_path = _resolve()
+    with _cache_lock:
+        _path_resolution_cache[cache_key] = resolved_path
+        # 限制缓存大小
+        if len(_path_resolution_cache) > 2000:
+            _path_resolution_cache.clear()
+
+    return resolved_path
 
 
 def get_annotations_file_path(folder_path: str) -> str:
@@ -555,19 +740,14 @@ def get_video_info():
         logger.info(
             f"[标注交互] 使用文件夹路径: {resolved_folder_path} (原始: {folder_path})")
 
-        # 查找视频文件
-        video_path = None
-        searched_paths = []
-        for root, dirs, files in os.walk(resolved_folder_path):
-            searched_paths.append(root)
-            if video_name in files:
-                video_path = os.path.join(root, video_name)
-                break
+        # 查找视频文件 (优化：使用 scan_video_files 的缓存)
+        videos = scan_video_files(resolved_folder_path)
+        video_path = next((v['path']
+                          for v in videos if v['name'] == video_name), None)
 
         if not video_path:
             logger.error(
-                f"[标注交互] 视频文件不存在: {video_name}, 搜索路径: {resolved_folder_path}")
-            logger.error(f"[标注交互] 已搜索的目录: {searched_paths}")
+                f"[标注交互] 视频文件不存在: {video_name}，在 {resolved_folder_path} 中未找到")
             return jsonify({
                 'error': f'视频文件不存在: {video_name}',
                 'searched_folder': resolved_folder_path
@@ -582,9 +762,18 @@ def get_video_info():
         logger.info(f"[标注交互] 找到视频文件: {video_path}")
 
         # 转换视频格式为浏览器兼容的MP4格式
+        # Windows下MOV格式需要转换，其他情况按需转换
         logger.info(f"[标注交互] 检查视频格式兼容性...")
+        file_ext = os.path.splitext(video_path)[1].lower()
+        needs_conversion = False
+
+        if platform.system() == 'Windows' and file_ext in {'.mov', '.MOV'}:
+            needs_conversion = True
+            logger.info(f"[标注交互] [Windows兼容] MOV格式需要转换")
+
         try:
-            converted_video_path = convert_video_for_browser(video_path)
+            converted_video_path = convert_video_for_browser(
+                video_path, force_convert=needs_conversion)
             logger.info(f"[标注交互] 视频格式处理完成: {converted_video_path}")
         except Exception as e:
             logger.warning(f"[标注交互] 视频格式转换失败，使用原文件: {e}")
@@ -712,7 +901,6 @@ def serve_video(filename):
     """提供视频文件服务"""
     try:
         import urllib.parse
-        import platform
 
         folder_path = urllib.parse.unquote(request.args.get('path', ''))
         filename = urllib.parse.unquote(filename)
@@ -787,17 +975,31 @@ def serve_video(filename):
                 return jsonify({'error': '视频文件不存在'}), 404
 
         # Windows 兼容性处理：检查是否需要转换视频格式
-        if platform.system() == 'Windows' or force_convert:
-            # 在 Windows 上，先尝试检查视频编码是否兼容
-            if force_convert or not check_video_codec_compatible(video_path):
-                logger.info(f"[视频服务] [Windows兼容] 视频可能不兼容，尝试转换: {video_path}")
-                converted_path = convert_video_for_browser(
-                    video_path, force_convert=True)
-                if converted_path != video_path and os.path.exists(converted_path):
-                    logger.info(
-                        f"[视频服务] [Windows兼容] 使用转换后的视频: {converted_path}")
-                    return send_file(converted_path, mimetype='video/mp4')
+        # 特别处理MOV格式：Windows下通常需要转换
+        file_ext = os.path.splitext(video_path)[1].lower()
+        needs_conversion = False
 
+        if platform.system() == 'Windows':
+            # Windows下MOV格式通常需要转换
+            if file_ext in {'.mov', '.MOV'}:
+                needs_conversion = True
+                logger.info(f"[视频服务] [Windows兼容] MOV格式需要转换: {video_path}")
+            elif force_convert or not check_video_codec_compatible(video_path):
+                needs_conversion = True
+                logger.info(f"[视频服务] [Windows兼容] 视频编码可能不兼容，尝试转换: {video_path}")
+        elif force_convert:
+            needs_conversion = True
+
+        if needs_conversion:
+            converted_path = convert_video_for_browser(
+                video_path, force_convert=True)
+            if converted_path != video_path and os.path.exists(converted_path):
+                update_file_access_time(converted_path)
+                logger.info(
+                    f"[视频服务] [Windows兼容] 使用转换后的视频: {converted_path}")
+                return send_file(converted_path, mimetype='video/mp4')
+
+        update_file_access_time(video_path)
         logger.debug(f"[视频服务] 提供视频文件: {video_path}")
         return send_file(video_path)
 
@@ -817,6 +1019,7 @@ def serve_image(filename):
         if not os.path.exists(image_path):
             return jsonify({'error': '图像文件不存在'}), 404
 
+        update_file_access_time(image_path)
         return send_file(image_path)
 
     except Exception as e:
@@ -847,32 +1050,48 @@ def asr_recognition():
         logger.info(
             f"[ASR识别] 使用文件夹路径: {resolved_folder_path} (原始: {folder_path})")
 
-        # 查找视频文件
-        video_path = None
-        for root, dirs, files in os.walk(resolved_folder_path):
-            if video_name in files:
-                video_path = os.path.join(root, video_name)
-                break
+        # 查找视频文件 (优化：使用 scan_video_files 的缓存)
+        videos = scan_video_files(resolved_folder_path)
+        video_path = next((v['path']
+                          for v in videos if v['name'] == video_name), None)
 
         if not video_path or not os.path.exists(video_path):
             logger.error(
-                f"[ASR识别] 视频文件不存在: {video_name}, 搜索路径: {resolved_folder_path}")
+                f"[ASR识别] 视频文件不存在: {video_name}，在 {resolved_folder_path} 中未找到")
             return jsonify({'error': '视频文件不存在'}), 404
 
         logger.info(f"[ASR识别] 找到视频文件: {video_path}")
 
-        # 提取音频
+        # 提取音频（使用hash作为缓存键，避免重复提取）
         logger.info(f"[ASR识别] 开始提取音频...")
-        audio_path, _ = extract_audio_and_video(
-            video_path,
-            output_dir=TEMP_DIR
-        )
+        file_hash = get_file_hash(video_path)
+        video_name = os.path.splitext(video_name)[0]
+        audio_filename = f"{video_name}_{file_hash[:8]}.mp3"
+        audio_path = os.path.join(TEMP_DIR, audio_filename)
+
+        # 如果音频文件已存在，直接使用
+        if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+            update_file_access_time(audio_path)
+            logger.info(f"[ASR识别] 使用已存在的音频文件: {audio_path}")
+        else:
+            # 提取音频
+            audio_path_extracted, _ = extract_audio_and_video(
+                video_path,
+                output_dir=TEMP_DIR,
+                audio_filename=audio_filename
+            )
+
+            if audio_path_extracted:
+                audio_path = audio_path_extracted
+                update_file_access_time(audio_path)
+                logger.info(f"[ASR识别] 音频提取成功: {audio_path}")
+            else:
+                logger.error(f"[ASR识别] 音频提取失败")
+                return jsonify({'error': '音频提取失败'}), 500
 
         if not audio_path or not os.path.exists(audio_path):
-            logger.error(f"[ASR识别] 音频提取失败")
-            return jsonify({'error': '音频提取失败'}), 500
-
-        logger.info(f"[ASR识别] 音频提取成功: {audio_path}")
+            logger.error(f"[ASR识别] 音频文件不存在")
+            return jsonify({'error': '音频文件不存在'}), 500
 
         # 进行ASR识别
         logger.info(f"[ASR识别] 开始ASR识别...")
@@ -1051,11 +1270,10 @@ def sam_segment():
 
         if not os.path.exists(last_frame_path):
             # 如果没有最后一帧图像，需要从视频中提取
-            video_path = None
-            for root, dirs, files in os.walk(resolved_folder_path):
-                if video_name in files:
-                    video_path = os.path.join(root, video_name)
-                    break
+            # 查找视频文件 (优化：使用 scan_video_files 的缓存)
+            videos = scan_video_files(resolved_folder_path)
+            video_path = next((v['path']
+                              for v in videos if v['name'] == video_name), None)
 
             if not video_path or not os.path.exists(video_path):
                 return jsonify({'error': f'视频文件不存在: {video_name}'}), 404
@@ -1278,9 +1496,47 @@ def internal_error(error):
     return jsonify({'error': '服务器内部错误'}), 500
 
 
+# 定期清理任务（在后台线程中运行）
+_last_cleanup_time = 0
+
+
+def periodic_cleanup():
+    """定期清理临时文件"""
+    global _last_cleanup_time
+    current_time = time.time()
+    if current_time - _last_cleanup_time > CACHE_CLEANUP_INTERVAL:
+        try:
+            cleanup_temp_files()
+            _last_cleanup_time = current_time
+        except Exception as e:
+            logger.warning(f"定期清理失败: {e}")
+
+
+@app.before_request
+def before_request():
+    """在每个请求前检查是否需要清理缓存"""
+    periodic_cleanup()
+
+
+@app.route('/api/simple_annotation/cleanup_cache', methods=['POST'])
+def cleanup_cache():
+    """手动触发缓存清理"""
+    try:
+        deleted_count, deleted_size = cleanup_temp_files()
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'deleted_size_mb': round(deleted_size / 1024 / 1024, 2)
+        })
+    except Exception as e:
+        logger.error(f"手动清理缓存失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("🚀 启动简易标注工具服务器...")
     print("📋 访问地址: http://localhost:5002")
+    print(f"📦 缓存配置: 最大 {CACHE_MAX_SIZE_MB}MB, 保留 {CACHE_MAX_AGE_HOURS} 小时")
     print("=" * 50)
 
     app.run(host='0.0.0.0', port=5001, debug=True)

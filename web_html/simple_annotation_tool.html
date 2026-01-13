@@ -1020,39 +1020,24 @@
                         return new Promise((resolveMask) => {
                             const img = new Image();
                             img.onload = () => {
-                                // 使用合成模式优化绘制性能
                                 ctx.save();
                                 
-                                // 创建临时 canvas 处理单个 mask 颜色
+                                // 优化：使用 Canvas 合成模式替代像素循环，大幅提升性能
                                 const tempCanvas = document.createElement('canvas');
                                 tempCanvas.width = width;
                                 tempCanvas.height = height;
-                                const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+                                const tempCtx = tempCanvas.getContext('2d');
 
-                                // 绘制原始 mask
+                                // 1. 绘制原始 Mask (通常是黑白或带 Alpha 的)
                                 tempCtx.drawImage(img, 0, 0, width, height);
 
-                                // 获取像素数据（批量处理）
-                                const imageData = tempCtx.getImageData(0, 0, width, height);
-                                const data = imageData.data;
-                                const dataLength = data.length;
+                                // 2. 使用 'source-in' 模式染色
+                                // 此模式下，新绘制的内容只保留在原有非透明像素上
+                                tempCtx.globalCompositeOperation = 'source-in';
+                                tempCtx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.47)`; // 120/255 ≈ 0.47
+                                tempCtx.fillRect(0, 0, width, height);
 
-                                // 优化：使用位运算和批量处理
-                                for (let i = 0; i < dataLength; i += 4) {
-                                    // 只要 R 通道大于 0，或者 Alpha 通道不为 0 (且不是全黑)，就认为是 Mask
-                                    if (data[i] > 0 || (data[i+3] > 0 && data[i] > 0)) { 
-                                        data[i] = color[0];     // R
-                                        data[i + 1] = color[1]; // G
-                                        data[i + 2] = color[2]; // B
-                                        data[i + 3] = 120;      // Alpha (约 47% 透明度)
-                                    } else {
-                                        data[i + 3] = 0;        // 背景全透明
-                                    }
-                                }
-
-                                tempCtx.putImageData(imageData, 0, 0);
-                                
-                                // 将处理后的 mask 绘制到主 canvas（使用合成模式）
+                                // 3. 将染色后的 Mask 绘制到主画布
                                 ctx.globalCompositeOperation = 'source-over';
                                 ctx.drawImage(tempCanvas, 0, 0);
 
