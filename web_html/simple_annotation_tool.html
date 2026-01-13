@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -119,7 +120,9 @@
             .main-content {
                 grid-template-columns: 1fr;
             }
-            .video-list-panel, .stats-panel {
+
+            .video-list-panel,
+            .stats-panel {
                 max-height: 300px;
             }
         }
@@ -325,7 +328,8 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-width: 0; /* 允许flex子元素收缩 */
+            min-width: 0;
+            /* 允许flex子元素收缩 */
         }
 
         .asr-result-section label {
@@ -398,41 +402,94 @@
 
         .point-marker {
             position: absolute;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            width: 14px; /* 进一步减小尺寸 */
+            height: 14px;
             transform: translate(-50%, -50%);
             cursor: pointer;
             transition: all 0.2s ease;
             z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto; /* 确保自身可点击 */
         }
 
+        /* 增大点击区域，但不显示（非编辑模式下） */
+        .point-marker::before {
+            content: '';
+            position: absolute;
+            width: 24px; /* 点击区域保持稍大 */
+            height: 24px;
+            background: transparent;
+            z-index: 1;
+        }
+
+        /* 编辑模式下缩小点击区域，方便在旁边添加新点 */
+        .point-marker.editing::before {
+            width: 8px; /* 编辑模式下点击区域缩小到 10px，既方便拖动又方便在旁边添加点 */
+            height: 8px;
+        }
+        
+        /* 编辑模式下悬停时稍微放大点击区域，方便拖动 */
+        .point-marker.editing:hover::before {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* 十字架的横线 */
+        .point-marker-h {
+            position: absolute;
+            width: 100%;
+            height: 2px; /* 加粗为 2px */
+            background-color: #fff;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.8);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* 十字架的竖线 */
+        .point-marker-v {
+            position: absolute;
+            width: 2px; /* 加粗为 2px */
+            height: 100%;
+            background-color: #fff;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.8);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* 不同对象的颜色 */
+        .point-marker.object-0 .point-marker-h, .point-marker.object-0 .point-marker-v { background-color: #ff4757; }
+        .point-marker.object-1 .point-marker-h, .point-marker.object-1 .point-marker-v { background-color: #2ed573; }
+        .point-marker.object-2 .point-marker-h, .point-marker.object-2 .point-marker-v { background-color: #1e90ff; }
+        .point-marker.object-3 .point-marker-h, .point-marker.object-3 .point-marker-v { background-color: #ffa502; }
+        .point-marker.object-4 .point-marker-h, .point-marker.object-4 .point-marker-v { background-color: #9b59b6; }
+
         .point-marker:hover {
-            transform: translate(-50%, -50%) scale(1.3);
+            transform: translate(-50%, -50%) scale(1.2);
             z-index: 20;
         }
 
         .point-marker.selected {
-            transform: translate(-50%, -50%) scale(1.4);
-            border-width: 4px;
+            transform: translate(-50%, -50%) scale(1.3);
             z-index: 20;
         }
+        
+        /* 选中状态下变色 */
+        .point-marker.selected .point-marker-h, .point-marker.selected .point-marker-v {
+            background-color: #ffd700;
+            box-shadow: 0 0 2px rgba(0, 0, 0, 1);
+            height: 3px; /* 选中状态更粗 */
+        }
+        .point-marker.selected .point-marker-v { width: 3px; }
 
         .point-marker.editing {
             cursor: move;
-            border-width: 4px;
-            animation: editing-pulse 1.5s infinite;
         }
 
         @keyframes editing-pulse {
-            0%, 100% {
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(102, 126, 234, 0.7);
-            }
-            50% {
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 8px rgba(102, 126, 234, 0);
-            }
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
         }
 
         .point-marker.dragging {
@@ -441,40 +498,41 @@
         }
 
         .point-marker.object-0 {
-            background-color: #ff4757;
+            /* background-color: #ff4757; */
         }
 
         .point-marker.object-1 {
-            background-color: #2ed573;
+            /* background-color: #2ed573; */
         }
 
         .point-marker.object-2 {
-            background-color: #3742fa;
+            /* background-color: #3742fa; */
         }
 
         .point-marker.object-3 {
-            background-color: #ffa502;
+            /* background-color: #ffa502; */
         }
 
         .point-marker.object-4 {
-            background-color: #5f27cd;
+            /* background-color: #5f27cd; */
         }
 
         .point-marker.saved-marker {
-            opacity: 0.7;
-            border-width: 2px;
+            opacity: 0.9;
         }
 
         .point-marker.editing-marker {
             opacity: 1;
-            border-width: 3px;
-            animation: pulse 2s infinite;
+            /* animation: pulse 2s infinite; */
         }
 
         @keyframes pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 transform: translate(-50%, -50%) scale(1);
             }
+
             50% {
                 transform: translate(-50%, -50%) scale(1.1);
             }
@@ -482,15 +540,17 @@
 
         .point-label {
             position: absolute;
-            background: rgba(0, 0, 0, 0.8);
+            /* 移除背景填充 */
+            background: transparent;
+            /* 加深文字颜色并添加描边阴影以保证可读性 */
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            text-shadow: 1px 1px 2px black, -1px -1px 2px black, 1px -1px 2px black, -1px 1px 2px black;
+            padding: 2px 4px;
+            font-size: 11px;
             white-space: nowrap;
             pointer-events: none;
             transform: translate(-50%, -100%);
-            margin-top: -8px;
+            margin-top: -10px;
         }
 
         .objects-list {
@@ -617,8 +677,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         ::-webkit-scrollbar {
@@ -641,6 +706,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -718,15 +784,28 @@
                     <h2>🖼️ 最后一帧标注</h2>
                     <div class="image-container" id="image-container">
                         <img id="last-frame-image" src="" alt="最后一帧" />
+                        <img id="sam-mask-overlay" src="" alt="SAM3 Mask"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; opacity: 0.7;" />
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="addObject()">➕ 添加目标对象 (A)</button>
                         <button class="btn btn-primary" onclick="addPlacementSpace()">📍 添加放置空间 (W)</button>
                         <button class="btn btn-warning" onclick="clearCurrentObject()">🗑️ 清除当前对象 (C)</button>
-                        <button class="btn btn-success" id="save-editing-btn" onclick="saveEditingObject()" style="display: none;">💾 保存编辑</button>
-                        <button class="btn btn-warning" id="cancel-editing-btn" onclick="cancelEditingObject()" style="display: none;">❌ 取消编辑 (Esc)</button>
+                        <button class="btn btn-success" id="save-editing-btn" onclick="saveEditingObject()"
+                            style="display: none;">💾 保存编辑</button>
+                        <button class="btn btn-warning" id="cancel-editing-btn" onclick="cancelEditingObject()"
+                            style="display: none;">❌ 取消编辑 (Esc)</button>
                         <button class="btn btn-success" onclick="saveAnnotations()">💾 保存标注 (Ctrl+S)</button>
-                        <button class="btn btn-warning" onclick="markAsInvalidVideo()" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">❌ 标记为无效视频</button>
+                        <button class="btn btn-warning" onclick="markAsInvalidVideo()"
+                            style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">❌ 标记为无效视频</button>
+                        <button class="btn btn-primary" id="sam-toggle-btn" onclick="toggleSAMMask()"
+                            style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">🎭 显示 SAM Mask
+                            (M)</button>
+                        <button class="btn btn-primary" id="sam-request-btn" onclick="requestSAMSegment()"
+                            style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">🔍 请求 SAM3
+                            分割</button>
+                    </div>
+                    <div id="sam-status" style="margin-top: 10px; padding: 8px; border-radius: 6px; display: none;">
                     </div>
                     <div class="objects-list" id="objects-list"></div>
                 </div>
@@ -791,6 +870,45 @@
     </div>
 
     <script>
+        // ========== DOM 缓存系统 ==========
+        const DOMCache = {
+            cache: {},
+            get(id) {
+                if (!this.cache[id]) {
+                    this.cache[id] = document.getElementById(id);
+                }
+                return this.cache[id];
+            },
+            clear() {
+                this.cache = {};
+            }
+        };
+
+        // ========== 防抖和节流工具函数 ==========
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // ========== 全局变量 ==========
         let videos = [];
         let filteredVideos = [];
         let currentVideoIndex = -1;
@@ -816,17 +934,214 @@
         let globalTaskTemplate = ''; // 全局任务模板（保留在切换视频时）
         let globalScene = ''; // 全局场景（保留在切换视频时）
 
-        // 监听任务模板和场景输入框的变化，更新全局变量
-        document.addEventListener('DOMContentLoaded', () => {
-            const taskTemplateInput = document.getElementById('task-template');
-            const sceneInput = document.getElementById('scene');
+        // SAM3 相关状态
+        let samMaskVisible = false; // SAM mask 是否可见
+        let samMaskUrl = null; // 当前 SAM mask 图像 URL
+        let isSAMLoading = false; // SAM3 是否正在加载
+        let samDebounceTimer = null; // SAM3 请求去抖动定时器
+        const SAM_DEBOUNCE_DELAY = 500; // 500ms 去抖动延迟
+
+        // 缓存常用DOM元素和计算结果
+        let cachedImageRect = null;
+        let cachedContainerRect = null;
+        let rectCacheValid = false;
+
+        // Mask 颜色列表
+        const MASK_COLORS = [
+            [255, 0, 0],    // Red
+            [0, 255, 0],    // Green
+            [0, 0, 255],    // Blue
+            [255, 255, 0],  // Yellow
+            [255, 0, 255],  // Magenta
+            [0, 255, 255],  // Cyan
+            [255, 165, 0],  // Orange
+            [128, 0, 128]   // Purple
+        ];
+
+        // 渲染已有的 masks（优化：使用requestAnimationFrame和批量处理）
+        async function renderExistingMasks() {
+            console.log('[MaskRender] 开始渲染 Mask');
+
+            if (!savedObjects || savedObjects.length === 0) {
+                console.log('[MaskRender] 没有保存的对象，重置状态');
+                resetSAMState();
+                return;
+            }
+
+            // 检查是否有任何对象包含 mask
+            const objectsWithMask = savedObjects.filter(obj => obj.mask && obj.mask.mask_base64);
+            console.log(`[MaskRender] 包含 mask 的对象数量: ${objectsWithMask.length}`);
+
+            if (objectsWithMask.length === 0) {
+                console.log('[MaskRender] 没有对象包含 mask');
+                resetSAMState();
+                return;
+            }
+
+            const imgElement = DOMCache.get('last-frame-image');
             
+            // 确保图片已加载，因为我们需要知道图片的原始尺寸
+            if (!imgElement.complete || imgElement.naturalWidth === 0) {
+                console.log('[MaskRender] 图片未加载完成，等待 load 事件');
+                // 使用一次性事件监听器
+                const loadHandler = () => {
+                    console.log('[MaskRender] 图片加载完成，触发渲染');
+                    renderExistingMasks();
+                };
+                imgElement.addEventListener('load', loadHandler, { once: true });
+                return;
+            }
+
+            console.log(`[MaskRender] 图片尺寸: ${imgElement.naturalWidth} x ${imgElement.naturalHeight}`);
+
+            const width = imgElement.naturalWidth;
+            const height = imgElement.naturalHeight;
+
+            // 使用requestAnimationFrame优化渲染性能
+            return new Promise((resolve) => {
+                requestAnimationFrame(async () => {
+                    // 创建画布
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: false });
+                    
+                    // 清空画布
+                    ctx.clearRect(0, 0, width, height);
+
+                    // 遍历所有对象并绘制 mask
+                    let maskCount = 0;
+                    const processPromises = savedObjects.map(async (obj, index) => {
+                        if (!obj.mask || !obj.mask.mask_base64) return;
+
+                        const maskBase64 = obj.mask.mask_base64;
+                        const color = MASK_COLORS[index % MASK_COLORS.length];
+
+                        return new Promise((resolveMask) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                // 使用合成模式优化绘制性能
+                                ctx.save();
+                                
+                                // 创建临时 canvas 处理单个 mask 颜色
+                                const tempCanvas = document.createElement('canvas');
+                                tempCanvas.width = width;
+                                tempCanvas.height = height;
+                                const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+
+                                // 绘制原始 mask
+                                tempCtx.drawImage(img, 0, 0, width, height);
+
+                                // 获取像素数据（批量处理）
+                                const imageData = tempCtx.getImageData(0, 0, width, height);
+                                const data = imageData.data;
+                                const dataLength = data.length;
+
+                                // 优化：使用位运算和批量处理
+                                for (let i = 0; i < dataLength; i += 4) {
+                                    // 只要 R 通道大于 0，或者 Alpha 通道不为 0 (且不是全黑)，就认为是 Mask
+                                    if (data[i] > 0 || (data[i+3] > 0 && data[i] > 0)) { 
+                                        data[i] = color[0];     // R
+                                        data[i + 1] = color[1]; // G
+                                        data[i + 2] = color[2]; // B
+                                        data[i + 3] = 120;      // Alpha (约 47% 透明度)
+                                    } else {
+                                        data[i + 3] = 0;        // 背景全透明
+                                    }
+                                }
+
+                                tempCtx.putImageData(imageData, 0, 0);
+                                
+                                // 将处理后的 mask 绘制到主 canvas（使用合成模式）
+                                ctx.globalCompositeOperation = 'source-over';
+                                ctx.drawImage(tempCanvas, 0, 0);
+
+                                // 绘制 bbox (如果存在)
+                                if (obj.mask.bbox && Array.isArray(obj.mask.bbox) && obj.mask.bbox.length === 4) {
+                                    const [x1, y1, x2, y2] = obj.mask.bbox;
+                                    const w = x2 - x1;
+                                    const h = y2 - y1;
+                                    
+                                    // 设置 bbox 样式 (使用与 mask 相同的颜色，不透明，比十字架更粗)
+                                    ctx.lineWidth = 4; /* 加粗为 4px，比十字架（2px）更粗 */
+                                    ctx.strokeStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                                    
+                                    // 绘制矩形框
+                                    ctx.strokeRect(x1, y1, w, h);
+                                }
+                                
+                                ctx.restore();
+                                maskCount++;
+                                resolveMask();
+                            };
+                            
+                            img.onerror = (e) => {
+                                console.error(`[MaskRender] 对象 ${obj.name || index} Mask 加载失败`, e);
+                                // 尝试另一种格式（如果第一次失败）
+                                if (img.src.includes('image/png')) {
+                                     console.log('尝试使用 jpeg 格式重试...');
+                                     const retryImg = new Image();
+                                     retryImg.onload = img.onload;
+                                     retryImg.onerror = () => resolveMask(); // 彻底失败
+                                     retryImg.src = `data:image/jpeg;base64,${maskBase64}`;
+                                     return;
+                                }
+                                resolveMask();
+                            };
+                            
+                            // 默认尝试 png 格式
+                            if (!maskBase64.startsWith('data:image')) {
+                                img.src = `data:image/png;base64,${maskBase64}`;
+                            } else {
+                                img.src = maskBase64;
+                            }
+                        });
+                    });
+
+                    await Promise.all(processPromises);
+                    
+                    console.log(`[MaskRender] 渲染完成，共绘制 ${maskCount} 个 Mask`);
+
+                    if (maskCount > 0) {
+                        // 使用requestAnimationFrame更新DOM
+                        requestAnimationFrame(() => {
+                            const maskOverlay = DOMCache.get('sam-mask-overlay');
+                            const toggleBtn = DOMCache.get('sam-toggle-btn');
+                            
+                            if (maskOverlay) {
+                                maskOverlay.src = canvas.toDataURL('image/png');
+                                maskOverlay.style.display = 'block';
+                            }
+                            
+                            samMaskVisible = true;
+                            samMaskUrl = canvas.toDataURL('image/png');
+                            
+                            if (toggleBtn) {
+                                toggleBtn.textContent = '👁️ 隐藏 SAM Mask (M)';
+                            }
+                            
+                            showStatus(`已加载 ${maskCount} 个对象的 mask`, 'success');
+                        });
+                    } else {
+                         console.warn('[MaskRender] 虽有 Mask 数据但未能成功绘制');
+                    }
+                    
+                    resolve();
+                });
+            });
+        }
+
+        // 监听任务模板和场景输入框的变化，更新全局变量（优化：使用DOM缓存）
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskTemplateInput = DOMCache.get('task-template');
+            const sceneInput = DOMCache.get('scene');
+
             if (taskTemplateInput) {
                 taskTemplateInput.addEventListener('input', () => {
                     globalTaskTemplate = taskTemplateInput.value.trim();
                 });
             }
-            
+
             if (sceneInput) {
                 sceneInput.addEventListener('input', () => {
                     globalScene = sceneInput.value.trim();
@@ -842,47 +1157,47 @@
                 saveAnnotations();
                 return;
             }
-            
+
             // Ctrl+Z 撤销
             if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 undo();
                 return;
             }
-            
+
             // Ctrl+Y 或 Ctrl+Shift+Z 重做
             if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
                 e.preventDefault();
                 redo();
                 return;
             }
-            
+
             // 如果焦点在输入框，不处理其他快捷键
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
             }
-            
+
             // A 添加对象
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 addObject();
                 return;
             }
-            
+
             // W 添加放置空间
             if (e.key === 'w' || e.key === 'W') {
                 e.preventDefault();
                 addPlacementSpace();
                 return;
             }
-            
+
             // C 清除当前对象
             if (e.key === 'c' || e.key === 'C') {
                 e.preventDefault();
                 clearCurrentObject();
                 return;
             }
-            
+
             // Delete 删除选中的点
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 e.preventDefault();
@@ -891,12 +1206,19 @@
                 }
                 return;
             }
-            
+
             // Escape 取消编辑模式
             if (e.key === 'Escape') {
                 if (editingObjectIndex >= 0) {
                     cancelEditingObject();
                 }
+                return;
+            }
+
+            // M 切换 SAM Mask 显示
+            if (e.key === 'm' || e.key === 'M') {
+                e.preventDefault();
+                toggleSAMMask();
                 return;
             }
         });
@@ -910,12 +1232,12 @@
                 currentObjectName: currentObjectName,
                 currentObjectType: currentObjectType  // 保存对象类型
             };
-            
+
             // 删除当前位置之后的历史记录
             history = history.slice(0, historyIndex + 1);
             history.push(state);
             historyIndex = history.length - 1;
-            
+
             // 限制历史记录数量
             if (history.length > 50) {
                 history.shift();
@@ -954,83 +1276,91 @@
             currentObjectIndex = state.currentObjectIndex;
             currentObjectName = state.currentObjectName;
             currentObjectType = state.currentObjectType || 'object'; // 恢复对象类型
-            
+
             // 重新渲染
             const imageContainer = document.getElementById('image-container');
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             renderSavedObjects();
             currentObjectPoints.forEach((point, idx) => {
                 createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
             });
-            
+
             updateObjectsList();
             updateStats();
         }
 
-        // 选择文件夹
+        // 选择文件夹（优化：使用DOM缓存）
         function selectFolder() {
-            const folderSelector = document.getElementById('folder-selector');
-            folderSelector.click();
+            const folderSelector = DOMCache.get('folder-selector');
+            if (folderSelector) folderSelector.click();
         }
 
-        // 处理文件夹选择
-        document.getElementById('folder-selector').addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files.length > 0) {
-                // 从第一个文件的路径中提取文件夹路径
-                const firstFile = files[0];
-                let folderPathValue = '';
-                
-                if (firstFile.webkitRelativePath) {
-                    // 提取文件夹名称（相对路径的第一部分）
-                    const relativePath = firstFile.webkitRelativePath;
-                    const folderName = relativePath.split('/')[0];
-                    
-                    // 显示提示，让用户输入完整路径
-                    // 如果用户知道路径，可以直接输入；否则可以输入文件夹名称，服务器会尝试查找
-                    folderPathValue = prompt(
-                        '已选择文件夹: ' + folderName + '\n\n请输入文件夹的完整路径（例如: /Users/username/Documents/folder）：\n\n提示：如果路径中包含空格或特殊字符，请确保正确输入。',
-                        folderName
-                    );
-                } else {
-                    // 如果没有webkitRelativePath，提示用户手动输入
-                    folderPathValue = prompt('请输入文件夹的完整路径：');
+        // 处理文件夹选择（优化：使用DOM缓存）
+        const folderSelector = DOMCache.get('folder-selector');
+        if (folderSelector) {
+            folderSelector.addEventListener('change', function (e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    // 从第一个文件的路径中提取文件夹路径
+                    const firstFile = files[0];
+                    let folderPathValue = '';
+
+                    if (firstFile.webkitRelativePath) {
+                        // 提取文件夹名称（相对路径的第一部分）
+                        const relativePath = firstFile.webkitRelativePath;
+                        const folderName = relativePath.split('/')[0];
+
+                        // 显示提示，让用户输入完整路径
+                        // 如果用户知道路径，可以直接输入；否则可以输入文件夹名称，服务器会尝试查找
+                        folderPathValue = prompt(
+                            '已选择文件夹: ' + folderName + '\n\n请输入文件夹的完整路径（例如: /Users/username/Documents/folder）：\n\n提示：如果路径中包含空格或特殊字符，请确保正确输入。',
+                            folderName
+                        );
+                    } else {
+                        // 如果没有webkitRelativePath，提示用户手动输入
+                        folderPathValue = prompt('请输入文件夹的完整路径：');
+                    }
+
+                    if (folderPathValue && folderPathValue.trim()) {
+                        folderPathValue = folderPathValue.trim();
+                        const folderPathInput = DOMCache.get('folder-path');
+                        if (folderPathInput) folderPathInput.value = folderPathValue;
+                        folderPath = folderPathValue;
+                        showStatus('已选择文件夹: ' + folderPathValue, 'success');
+                    }
+
+                    // 清空选择，以便下次可以重新选择
+                    e.target.value = '';
                 }
-                
-                if (folderPathValue && folderPathValue.trim()) {
-                    folderPathValue = folderPathValue.trim();
-                    document.getElementById('folder-path').value = folderPathValue;
-                    folderPath = folderPathValue;
-                    showStatus('已选择文件夹: ' + folderPathValue, 'success');
-                }
-                
-                // 清空选择，以便下次可以重新选择
-                e.target.value = '';
-            }
-        });
+            });
+        }
 
         // 过滤视频
         function filterVideos() {
             const searchTerm = document.getElementById('video-search').value.toLowerCase();
-            filteredVideos = videos.filter(video => 
+            filteredVideos = videos.filter(video =>
                 video.name.toLowerCase().includes(searchTerm)
             );
             displayVideoList();
         }
 
-        // 加载视频列表
+        // 加载视频列表（优化：使用DOM缓存）
         async function loadVideos() {
-            folderPath = document.getElementById('folder-path').value.trim();
+            const folderPathInput = DOMCache.get('folder-path');
+            const taskTemplateInput = DOMCache.get('task-template');
+            const sceneInput = DOMCache.get('scene');
+            
+            folderPath = folderPathInput ? folderPathInput.value.trim() : '';
             if (!folderPath) {
                 showStatus('请先选择文件夹', 'error');
                 return;
             }
 
             // 保存当前的任务模板和场景到全局变量
-            globalTaskTemplate = document.getElementById('task-template').value.trim();
-            globalScene = document.getElementById('scene').value.trim();
+            globalTaskTemplate = taskTemplateInput ? taskTemplateInput.value.trim() : '';
+            globalScene = sceneInput ? sceneInput.value.trim() : '';
 
             showLoading(true);
             try {
@@ -1049,7 +1379,7 @@
                 const data = await response.json();
                 videos = data.videos || [];
                 filteredVideos = [...videos];
-                
+
                 // 加载已有的标注数据
                 await loadAnnotations();
 
@@ -1057,7 +1387,7 @@
                 updateProgress();
                 showLoading(false);
                 showStatus(`成功加载 ${videos.length} 个视频`, 'success');
-                
+
                 // 自动加载第一个未标注的视频（跳过无效视频）
                 if (videos.length > 0) {
                     // 查找第一个未标注且非无效的视频
@@ -1068,7 +1398,7 @@
                         const isInvalid = annotation && annotation.is_invalid === true;
                         const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                         const isAnnotated = objectSpaceList.length > 0;
-                        
+
                         // 跳过无效视频和已标注的视频
                         if (!isInvalid && !isAnnotated) {
                             // 延迟一下再选择，确保UI已更新
@@ -1108,10 +1438,11 @@
         // 更新进度条
         function updateProgress() {
             if (videos.length === 0) {
-                document.getElementById('progress-fill').style.width = '0%';
+                const progressFill = DOMCache.get('progress-fill');
+                if (progressFill) progressFill.style.width = '0%';
                 return;
             }
-            
+
             let annotatedCount = 0;
             videos.forEach(video => {
                 const annotationKey = `${folderPath}|${video.name}`;
@@ -1120,27 +1451,32 @@
                 const isAnnotated = objectSpaceList.length > 0;
                 if (isAnnotated) annotatedCount++;
             });
-            
+
             const progress = (annotatedCount / videos.length) * 100;
-            document.getElementById('progress-fill').style.width = progress + '%';
+            const progressFill = DOMCache.get('progress-fill');
+            if (progressFill) progressFill.style.width = progress + '%';
         }
 
         // 更新统计信息
         function updateStats() {
             if (currentVideo) {
-                document.getElementById('stat-current-video').textContent = currentVideo.name;
+                const statCurrentVideo = DOMCache.get('stat-current-video');
+                if (statCurrentVideo) statCurrentVideo.textContent = currentVideo.name;
             } else {
-                document.getElementById('stat-current-video').textContent = '-';
+                const statCurrentVideo = DOMCache.get('stat-current-video');
+                if (statCurrentVideo) statCurrentVideo.textContent = '-';
             }
-            
+
             const totalObjects = savedObjects.length + editingObjects.length + (currentObjectIndex !== -1 && currentObjectPoints.length > 0 ? 1 : 0);
             const totalPoints = savedObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
-                               editingObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
-                               currentObjectPoints.length;
-            
-            document.getElementById('stat-objects-count').textContent = totalObjects;
-            document.getElementById('stat-points-count').textContent = totalPoints;
-            
+                editingObjects.reduce((sum, obj) => sum + (obj.points ? obj.points.length : 0), 0) +
+                currentObjectPoints.length;
+
+            const statObjectsCount = DOMCache.get('stat-objects-count');
+            const statPointsCount = DOMCache.get('stat-points-count');
+            if (statObjectsCount) statObjectsCount.textContent = totalObjects;
+            if (statPointsCount) statPointsCount.textContent = totalPoints;
+
             // 更新视频统计
             if (videos.length > 0) {
                 let annotatedCount = 0;
@@ -1151,24 +1487,31 @@
                     const isAnnotated = objectSpaceList.length > 0;
                     if (isAnnotated) annotatedCount++;
                 });
-                
+
                 const progressPercent = Math.round((annotatedCount / videos.length) * 100);
-                document.getElementById('stat-progress').textContent = `${progressPercent}%`;
-                
-                document.getElementById('video-stats').innerHTML = `
-                    <div>总计: ${videos.length} 个视频</div>
-                    <div>已标注: ${annotatedCount} 个</div>
-                    <div>未标注: ${videos.length - annotatedCount} 个</div>
-                `;
-                
-                document.getElementById('video-count').textContent = `(${filteredVideos.length}/${videos.length})`;
+                const statProgress = DOMCache.get('stat-progress');
+                if (statProgress) statProgress.textContent = `${progressPercent}%`;
+
+                const videoStats = DOMCache.get('video-stats');
+                const videoCount = DOMCache.get('video-count');
+                if (videoStats) {
+                    videoStats.innerHTML = `
+                        <div>总计: ${videos.length} 个视频</div>
+                        <div>已标注: ${annotatedCount} 个</div>
+                        <div>未标注: ${videos.length - annotatedCount} 个</div>
+                    `;
+                }
+                if (videoCount) videoCount.textContent = `(${filteredVideos.length}/${videos.length})`;
             }
         }
 
-        // 显示视频列表
+        // 显示视频列表（优化：使用DocumentFragment批量创建）
         function displayVideoList() {
-            const container = document.getElementById('video-list');
-            container.innerHTML = '';
+            const container = DOMCache.get('video-list');
+            if (!container) return;
+            
+            // 使用DocumentFragment批量创建DOM元素，减少重排
+            const fragment = document.createDocumentFragment();
 
             filteredVideos.forEach((video, index) => {
                 // 找到原始索引
@@ -1178,13 +1521,13 @@
                 if (originalIndex === currentVideoIndex) {
                     videoItem.classList.add('active');
                 }
-                
+
                 const annotationKey = `${folderPath}|${video.name}`;
                 const annotation = annotations[annotationKey];
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
-                
+
                 if (isInvalid) {
                     videoItem.classList.add('invalid');
                     videoItem.style.borderLeft = '4px solid #ff6b6b';
@@ -1203,19 +1546,33 @@
                     statusText = '○ 未标注';
                 }
 
-                videoItem.innerHTML = `
-                    <div class="video-item-name">${video.name}</div>
-                    <div class="video-item-status">${statusText}</div>
-                `;
+                // 使用textContent代替innerHTML提高性能
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'video-item-name';
+                nameDiv.textContent = video.name;
+                
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'video-item-status';
+                statusDiv.textContent = statusText;
+                
+                videoItem.appendChild(nameDiv);
+                videoItem.appendChild(statusDiv);
 
                 videoItem.addEventListener('click', () => {
                     selectVideo(originalIndex);
                 });
 
-                container.appendChild(videoItem);
+                fragment.appendChild(videoItem);
             });
 
-            document.getElementById('main-content').style.display = 'grid';
+            // 一次性清空并添加所有元素
+            container.innerHTML = '';
+            container.appendChild(fragment);
+
+            const mainContent = DOMCache.get('main-content');
+            if (mainContent) {
+                mainContent.style.display = 'grid';
+            }
             updateStats();
         }
 
@@ -1237,7 +1594,9 @@
             history = [];
             historyIndex = -1;
             currentASRResult = null; // 重置ASR结果
-            
+            resetSAMState(); // 重置SAM3状态
+            window.currentObjectMask = null; // 重置当前对象的 Mask 数据
+
             // 隐藏编辑按钮
             document.getElementById('save-editing-btn').style.display = 'none';
             document.getElementById('cancel-editing-btn').style.display = 'none';
@@ -1249,7 +1608,10 @@
                 timestamp: new Date().toISOString()
             });
 
-            displayVideoList();
+            // 延迟更新视频列表，优先处理视频加载（优化切换速度）
+            requestAnimationFrame(() => {
+                displayVideoList();
+            });
 
             showLoading(true);
             try {
@@ -1266,95 +1628,143 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     // 尝试获取后端返回的详细错误信息
                     const errorMsg = data.error || '加载视频信息失败';
                     console.error('[标注交互] 加载视频信息失败:', errorMsg, data);
                     throw new Error(errorMsg);
                 }
-                
+
                 // 如果后端返回了标注数据，更新全局的annotations对象
                 if (data.annotation) {
                     const annotationKey = `${folderPath}|${currentVideo.name}`;
                     annotations[annotationKey] = data.annotation;
                     console.log('[标注交互] 从后端获取到标注数据:', annotationKey);
                 }
-                
-                // 设置视频播放器
-                const videoPlayer = document.getElementById('video-player');
-                
-                // 添加错误处理
-                videoPlayer.onerror = function(e) {
-                    console.error('[视频播放] 视频加载失败:', e);
-                    const errorMsg = '视频无法播放。可能的原因：\n' +
-                        '1. 视频格式不支持\n' +
-                        '2. 视频文件损坏\n' +
-                        '3. 网络问题\n' +
-                        '请检查浏览器控制台获取更多信息。';
-                    alert(errorMsg);
-                    showStatus('视频加载失败，请检查控制台', 'error');
+
+                // 设置视频播放器（优化：使用DOM缓存）
+                const videoPlayer = DOMCache.get('video-player');
+                if (!videoPlayer) {
+                    showLoading(false);
+                    showStatus('无法找到视频播放器', 'error');
+                    return;
+                }
+
+                // 视频加载状态跟踪
+                let videoLoadFailed = false;
+                let lastFrameLoadSuccess = false;
+
+                // 添加错误处理（改进：不阻止用户操作，只显示警告）
+                videoPlayer.onerror = function (e) {
+                    console.warn('[视频播放] 视频加载失败:', e, videoPlayer.error);
+                    videoLoadFailed = true;
+                    
+                    // 如果最后一帧已经成功加载，只显示警告，不阻止操作
+                    if (lastFrameLoadSuccess) {
+                        showStatus('视频无法播放，但最后一帧已加载，可以继续标注', 'warning');
+                        showLoading(false);
+                    } else {
+                        // 如果最后一帧也还没加载，等待最后一帧的结果
+                        console.log('[视频播放] 等待最后一帧加载结果...');
+                    }
                 };
-                
+
                 // 添加加载事件处理
-                videoPlayer.onloadstart = function() {
+                videoPlayer.onloadstart = function () {
                     console.log('[视频播放] 开始加载视频:', data.video_url);
                 };
-                
-                videoPlayer.onloadeddata = function() {
+
+                videoPlayer.onloadeddata = function () {
                     console.log('[视频播放] 视频数据加载完成');
+                    videoLoadFailed = false;
+                    clearTimeout(videoLoadTimeout); // 清除超时定时器
                 };
-                
-                videoPlayer.oncanplay = function() {
+
+                videoPlayer.oncanplay = function () {
                     console.log('[视频播放] 视频可以播放');
-                    showLoading(false);
+                    clearTimeout(videoLoadTimeout); // 清除超时定时器
+                    if (!videoLoadFailed) {
+                        showLoading(false);
+                    }
                 };
-                
+
+                // 设置超时处理：如果视频加载时间过长，不阻止操作
+                const videoLoadTimeout = setTimeout(() => {
+                    if (!lastFrameLoadSuccess) {
+                        console.warn('[视频播放] 视频加载超时');
+                    }
+                }, 10000); // 10秒超时
+
                 videoPlayer.src = data.video_url;
                 // 设置默认播放速度为1.5倍速
                 videoPlayer.playbackRate = 1.5;
+
+                // 设置最后一帧图像（优化：使用DOM缓存）
+                const lastFrameImage = DOMCache.get('last-frame-image');
+                const imageContainer = DOMCache.get('image-container');
                 
-                // 设置最后一帧图像
-                const lastFrameImage = document.getElementById('last-frame-image');
-                lastFrameImage.src = data.last_frame_url;
+                if (!lastFrameImage || !imageContainer) {
+                    showLoading(false);
+                    showStatus('无法找到图像容器', 'error');
+                    return;
+                }
+                
+                // 先清空所有状态，再加载标注（提前执行，减少等待时间）
+                currentObjectIndex = -1;
+                currentObjectPoints = [];
+                currentObjectName = '';
+                currentObjectType = 'object';
+                savedObjects = [];
+                editingObjectIndex = -1;
+                editingObjectPoints = [];
+                selectedPointIndex = -1;
+                
+                // 移除所有旧的标记点（提前执行）
+                const oldMarkers = imageContainer.querySelectorAll('.point-marker');
+                oldMarkers.forEach(marker => marker.remove());
+                
+                // 使rect缓存失效，确保下次获取时重新计算
+                invalidateRectCache();
+                
+                // 先绑定 onload 事件，再设置 src，防止缓存导致的事件丢失
                 lastFrameImage.onload = () => {
-                    // 重新设置点击事件处理（清除之前的监听器）
-                    const imageContainer = document.getElementById('image-container');
-                    // 移除所有旧的标记点
-                    const oldMarkers = imageContainer.querySelectorAll('.point-marker');
-                    oldMarkers.forEach(marker => marker.remove());
+                    console.log('[LastFrame] 图片加载回调触发');
+                    lastFrameLoadSuccess = true;
+                    clearTimeout(videoLoadTimeout); // 清除视频加载超时定时器
                     
-                    // 先清空所有状态，再加载标注
-                    currentObjectIndex = -1;
-                    currentObjectPoints = [];
-                    currentObjectName = '';
-                    currentObjectType = 'object';
-                    savedObjects = [];
-                    editingObjectIndex = -1;
-                    editingObjectPoints = [];
-                    selectedPointIndex = -1;
+                    // 如果视频加载失败，但最后一帧成功，允许继续操作
+                    if (videoLoadFailed) {
+                        showStatus('视频无法播放，但最后一帧已加载，可以继续标注', 'warning');
+                    }
+                    
+                    // 使缓存失效，确保使用最新的图片尺寸
+                    invalidateRectCache();
                     
                     setupImageClickHandler();
                     loadVideoAnnotations();
-                    
-                    // 图像尺寸变化时重新渲染标记点
-                    const resizeHandler = function() {
+
+                    // 图像尺寸变化时重新渲染标记点（优化：使用缓存的rect）
+                    const resizeHandler = function () {
+                        invalidateRectCache(); // 使缓存失效，重新获取
+                        const { containerRect, imageRect } = getCachedRects();
+                        
+                        if (!containerRect || !imageRect) return;
+                        
                         const markers = imageContainer.querySelectorAll('.point-marker');
                         markers.forEach(marker => marker.remove());
-                        
+
                         // 如果正在编辑对象，需要重新计算编辑点的位置
                         if (editingObjectIndex >= 0) {
-                            const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
-                            const containerRect = imageContainer.getBoundingClientRect();
                             const imageOffsetX = (containerRect.width - imageRect.width) / 2;
                             const imageOffsetY = (containerRect.height - imageRect.height) / 2;
-                            
+
                             // 更新编辑点的显示位置
                             editingObjectPoints.forEach(point => {
                                 point.displayX = point.x * imageRect.width + imageOffsetX;
                                 point.displayY = point.y * imageRect.height + imageOffsetY;
                             });
-                            
+
                             // 重新渲染所有对象
                             savedObjects.forEach((savedObj, objIdx) => {
                                 if (objIdx !== editingObjectIndex) {
@@ -1363,7 +1773,7 @@
                                         const normalizedY = point[0] / 1000;
                                         const displayX = normalizedX * imageRect.width + imageOffsetX;
                                         const displayY = normalizedY * imageRect.height + imageOffsetY;
-                                        
+
                                         createPointMarker(
                                             { displayX, displayY },
                                             objIdx,
@@ -1375,7 +1785,7 @@
                                     });
                                 }
                             });
-                            
+
                             // 渲染编辑对象的点
                             const obj = savedObjects[editingObjectIndex];
                             editingObjectPoints.forEach((point, idx) => {
@@ -1384,23 +1794,59 @@
                         } else {
                             renderSavedObjects();
                         }
-                        
+
+                        // 渲染已存在的 Mask
+                        renderExistingMasks();
+
                         // 重新渲染当前编辑的点
                         currentObjectPoints.forEach((point, idx) => {
                             createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
                         });
                     };
-                    
+
                     // 移除旧的resize监听器（如果存在）
                     window.removeEventListener('resize', resizeHandler);
-                    window.addEventListener('resize', resizeHandler);
+                    // 使用防抖优化resize事件
+                    const debouncedResizeHandler = debounce(() => {
+                        invalidateRectCache();
+                        resizeHandler();
+                    }, 150);
+                    window.addEventListener('resize', debouncedResizeHandler, { passive: true });
+                    
+                    // 使用requestAnimationFrame延迟执行初始渲染，确保图片已完全加载
+                    requestAnimationFrame(() => {
+                        resizeHandler();
+                        showLoading(false);
+                        updateStats();
+                    });
                 };
-
-                showLoading(false);
-                updateStats();
                 
-                // 自动进行ASR识别
-                performASRRecognition();
+                // 添加最后一帧图片的错误处理
+                lastFrameImage.onerror = function() {
+                    console.error('[LastFrame] 最后一帧图片加载失败:', data.last_frame_url);
+                    clearTimeout(videoLoadTimeout);
+                    
+                    // 如果最后一帧也失败，才真正报错
+                    if (videoLoadFailed) {
+                        // 视频和最后一帧都失败
+                        showStatus('视频和最后一帧都无法加载，请检查文件', 'error');
+                    } else {
+                        // 只有最后一帧失败，但视频可能可以播放
+                        showStatus('最后一帧加载失败，但视频可能可以播放', 'warning');
+                    }
+                    showLoading(false);
+                };
+                
+                // 添加时间戳防止缓存问题
+                lastFrameImage.src = data.last_frame_url + (data.last_frame_url.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+                
+                // 注意：showLoading(false) 和 updateStats() 会在图片加载完成的onload回调中执行
+                // 这里先不执行，避免在图片未加载完成时就隐藏loading
+
+                // 异步执行ASR识别，不阻塞UI（优化切换速度）
+                requestAnimationFrame(() => {
+                    performASRRecognition();
+                });
             } catch (error) {
                 showLoading(false);
                 showStatus('加载视频失败: ' + error.message, 'error');
@@ -1432,8 +1878,12 @@
 
                 const data = await response.json();
 
-                // 隐藏加载状态
-                document.getElementById('asr-loading').style.display = 'none';
+                // 隐藏加载状态（优化：使用DOM缓存）
+                const asrLoading = DOMCache.get('asr-loading');
+                const asrTextContent = DOMCache.get('asr-text-content');
+                const asrError = DOMCache.get('asr-error');
+                
+                if (asrLoading) asrLoading.style.display = 'none';
 
                 if (data.success && data.text && data.text.trim()) {
                     // 保存完整的ASR结果（包括多个句子和词汇级别）
@@ -1442,61 +1892,101 @@
                         text: data.text, // 完整文本（所有句子合并）
                         words: data.words || []
                     };
-                    
+
                     // 显示识别结果（支持多个句子）
                     displayASRResult(currentASRResult);
                 } else {
                     // ASR识别失败或为空，显示友好提示而不是错误
                     const errorMsg = data.error || '未识别到语音内容';
-                    document.getElementById('asr-error').textContent = '⚠️ ' + errorMsg;
-                    document.getElementById('asr-error').style.display = 'block';
-                    document.getElementById('asr-text-content').style.display = 'none';
+                    if (asrError) {
+                        asrError.textContent = '⚠️ ' + errorMsg;
+                        asrError.style.display = 'block';
+                    }
+                    if (asrTextContent) asrTextContent.style.display = 'none';
                     currentASRResult = null;
                 }
             } catch (error) {
-                // 隐藏加载状态
-                document.getElementById('asr-loading').style.display = 'none';
+                // 隐藏加载状态（优化：使用DOM缓存）
+                const asrLoading = DOMCache.get('asr-loading');
+                const asrTextContent = DOMCache.get('asr-text-content');
+                const asrError = DOMCache.get('asr-error');
+                
+                if (asrLoading) asrLoading.style.display = 'none';
                 // ASR识别失败，显示友好提示而不是错误
-                document.getElementById('asr-error').textContent = '⚠️ ASR识别失败: ' + error.message;
-                document.getElementById('asr-error').style.display = 'block';
-                document.getElementById('asr-text-content').style.display = 'none';
+                if (asrError) {
+                    asrError.textContent = '⚠️ ASR识别失败: ' + error.message;
+                    asrError.style.display = 'block';
+                }
+                if (asrTextContent) asrTextContent.style.display = 'none';
                 currentASRResult = null;
             }
         }
 
-        // 设置图像点击处理
-        function setupImageClickHandler() {
-            const imageContainer = document.getElementById('image-container');
-            const lastFrameImage = document.getElementById('last-frame-image');
+        // 获取缓存的图像和容器位置（优化：减少getBoundingClientRect调用）
+        function getCachedRects() {
+            const imageContainer = DOMCache.get('image-container');
+            const lastFrameImage = DOMCache.get('last-frame-image');
             
+            if (!imageContainer || !lastFrameImage) {
+                return { containerRect: null, imageRect: null };
+            }
+            
+            // 如果图片还没加载完成，直接获取（不使用缓存）
+            if (!lastFrameImage.complete || lastFrameImage.naturalWidth === 0) {
+                rectCacheValid = false;
+            }
+            
+            if (!rectCacheValid) {
+                cachedContainerRect = imageContainer.getBoundingClientRect();
+                cachedImageRect = lastFrameImage.getBoundingClientRect();
+                rectCacheValid = true;
+            }
+            return { containerRect: cachedContainerRect, imageRect: cachedImageRect };
+        }
+
+        // 使rect缓存失效（在窗口大小改变或图像加载时调用）
+        function invalidateRectCache() {
+            rectCacheValid = false;
+            cachedImageRect = null;
+            cachedContainerRect = null;
+        }
+
+        // 设置图像点击处理（优化：使用缓存的rect，但确保图片已加载）
+        function setupImageClickHandler() {
+            const imageContainer = DOMCache.get('image-container');
+            const lastFrameImage = DOMCache.get('last-frame-image');
+            if (!imageContainer || !lastFrameImage) return;
+            
+            // 确保图片已加载完成，否则使缓存失效
+            if (!lastFrameImage.complete || lastFrameImage.naturalWidth === 0) {
+                invalidateRectCache();
+            }
+
             // 移除旧的监听器（如果存在）
             const newHandler = (e) => {
-                // 如果正在编辑已保存的对象，不允许添加新点
-                if (editingObjectIndex >= 0) {
-                    showStatus('正在编辑对象，请先保存或取消编辑', 'error');
-                    return;
-                }
+                // 每次点击时直接获取最新的rect，不使用缓存，确保位置准确
+                const imageContainer = DOMCache.get('image-container');
+                const lastFrameImage = DOMCache.get('last-frame-image');
+                if (!imageContainer || !lastFrameImage) return;
                 
-                if (currentObjectIndex === -1) {
-                    showStatus('请先点击"添加目标对象"按钮', 'error');
-                    return;
-                }
-
-                const rect = imageContainer.getBoundingClientRect();
+                // 直接获取最新的rect，不使用缓存
+                const containerRect = imageContainer.getBoundingClientRect();
                 const imageRect = lastFrameImage.getBoundingClientRect();
                 
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                
+                if (!containerRect || !imageRect) return;
+
+                const clickX = e.clientX - containerRect.left;
+                const clickY = e.clientY - containerRect.top;
+
                 // 计算相对于图像的坐标
-                const imageOffsetX = (rect.width - imageRect.width) / 2;
-                const imageOffsetY = (rect.height - imageRect.height) / 2;
-                
+                const imageOffsetX = (containerRect.width - imageRect.width) / 2;
+                const imageOffsetY = (containerRect.height - imageRect.height) / 2;
+
                 const relativeX = clickX - imageOffsetX;
                 const relativeY = clickY - imageOffsetY;
-                
+
                 // 检查点击是否在图像范围内
-                if (relativeX < 0 || relativeX > imageRect.width || 
+                if (relativeX < 0 || relativeX > imageRect.width ||
                     relativeY < 0 || relativeY > imageRect.height) {
                     return;
                 }
@@ -1505,14 +1995,72 @@
                 const normalizedX = relativeX / imageRect.width;
                 const normalizedY = relativeY / imageRect.height;
 
+                // 如果正在编辑已保存的对象，允许添加新点到编辑列表
+                if (editingObjectIndex >= 0) {
+                    addPointToEditingObject(normalizedX, normalizedY, clickX, clickY);
+                    return;
+                }
+
+                // 如果正在创建新对象
+                if (currentObjectIndex === -1) {
+                    showStatus('请先点击"添加目标对象"按钮', 'error');
+                    return;
+                }
+
                 // 添加点
                 addPoint(normalizedX, normalizedY, clickX, clickY);
             };
-            
+
             // 移除旧的监听器并添加新的
-            imageContainer.removeEventListener('click', imageContainer._clickHandler);
+            if (imageContainer._clickHandler) {
+                imageContainer.removeEventListener('click', imageContainer._clickHandler);
+            }
             imageContainer._clickHandler = newHandler;
-            imageContainer.addEventListener('click', newHandler);
+            imageContainer.addEventListener('click', newHandler, { passive: true });
+        }
+
+        // 添加点到编辑对象
+        function addPointToEditingObject(normalizedX, normalizedY, displayX, displayY) {
+            if (editingObjectIndex < 0) {
+                return;
+            }
+
+            const point = {
+                x: normalizedX,
+                y: normalizedY,
+                displayX: displayX,
+                displayY: displayY
+            };
+
+            saveHistory();
+            editingObjectPoints.push(point);
+            
+            // 创建标记点（编辑模式）
+            const obj = savedObjects[editingObjectIndex];
+            createPointMarker(point, editingObjectIndex, false, obj.name, editingObjectPoints.length - 1, true);
+            
+            updateObjectsList();
+            updateStats();
+
+            // 打印标注交互信息
+            console.log(`[标注交互] 编辑模式下添加标注点`, {
+                video: currentVideo.name,
+                object_index: editingObjectIndex,
+                object_name: obj.name,
+                point_index: editingObjectPoints.length - 1,
+                normalized_coords: { x: normalizedX, y: normalizedY },
+                pixel_coords: { x: Math.round(normalizedX * 1000), y: Math.round(normalizedY * 1000) },
+                total_points: editingObjectPoints.length,
+                timestamp: new Date().toISOString()
+            });
+
+            showStatus(`已添加点，当前共 ${editingObjectPoints.length} 个点`, 'success');
+            
+            // 自动请求 SAM3 分割 (带去抖动)
+            autoRequestSAMSegment();
+            
+            // 自动保存（编辑模式下修改点后自动保存）
+            scheduleAutoSave();
         }
 
         // 添加点
@@ -1529,23 +2077,28 @@
             createPointMarker(point, currentObjectIndex, false, currentObjectName, currentObjectPoints.length - 1);
             updateObjectsList();
             updateStats();
-            
+
             // 打印标注交互信息
             console.log(`[标注交互] 添加标注点`, {
                 video: currentVideo.name,
                 object_index: currentObjectIndex,
                 object_name: currentObjectName,
                 point_index: currentObjectPoints.length - 1,
-                normalized_coords: {x: normalizedX, y: normalizedY},
-                pixel_coords: {x: Math.round(normalizedX * 1000), y: Math.round(normalizedY * 1000)},
+                normalized_coords: { x: normalizedX, y: normalizedY },
+                pixel_coords: { x: Math.round(normalizedX * 1000), y: Math.round(normalizedY * 1000) },
                 total_points: currentObjectPoints.length,
                 timestamp: new Date().toISOString()
             });
+
+            // 自动请求 SAM3 分割 (带去抖动)
+            autoRequestSAMSegment();
         }
 
-        // 创建点标记
+        // 创建点标记（优化：使用DOM缓存和批量操作）
         function createPointMarker(point, objectIndex, isSaved = false, objectName = null, pointIndex = -1, isEditingMode = false) {
-            const imageContainer = document.getElementById('image-container');
+            const imageContainer = DOMCache.get('image-container');
+            if (!imageContainer) return;
+            
             const marker = document.createElement('div');
             marker.className = `point-marker object-${objectIndex % 5}`;
             if (isSaved && !isEditingMode) {
@@ -1553,95 +2106,115 @@
             } else {
                 marker.classList.add('editing-marker'); // 添加正在编辑标记的样式类
             }
-            
+
             // 如果是编辑模式，添加editing类
             if (isEditingMode) {
                 marker.classList.add('editing');
             }
-            
+
+            // 使用transform代替left/top提高性能（如果浏览器支持）
             marker.style.left = point.displayX + 'px';
             marker.style.top = point.displayY + 'px';
             marker.dataset.pointIndex = pointIndex;
             marker.dataset.objectIndex = objectIndex;
             marker.dataset.isSaved = isSaved;
             marker.dataset.isEditing = isEditingMode;
-            
-            // 添加点击事件选择点
+
+            // 使用事件委托优化（可选，但当前保持原有逻辑）
             marker.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // 在编辑模式下也可以选择点（用于删除）
                 selectPoint(marker, pointIndex, objectIndex, isSaved || isEditingMode);
-            });
-            
+            }, { passive: true });
+
             // 如果是编辑模式，添加拖动功能
             if (isEditingMode) {
                 marker.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     startDrag(marker, e, pointIndex);
-                });
+                }, { passive: false });
             }
+
+            // 创建内部元素（使用DocumentFragment批量创建）
+            const fragment = document.createDocumentFragment();
             
+            const hLine = document.createElement('div');
+            hLine.className = 'point-marker-h';
+            fragment.appendChild(hLine);
+
+            const vLine = document.createElement('div');
+            vLine.className = 'point-marker-v';
+            fragment.appendChild(vLine);
+
             const label = document.createElement('div');
             label.className = 'point-label';
             label.textContent = objectName || currentObjectName || `对象${objectIndex + 1}`;
-            marker.appendChild(label);
-
+            fragment.appendChild(label);
+            
+            marker.appendChild(fragment);
             imageContainer.appendChild(marker);
         }
 
-        // 开始拖动
+        // 开始拖动（优化：使用DOM缓存）
         function startDrag(marker, e, pointIndex) {
             draggedMarker = marker;
             selectedPointIndex = pointIndex;
-            
+
             const rect = marker.getBoundingClientRect();
-            const imageContainer = document.getElementById('image-container');
-            const containerRect = imageContainer.getBoundingClientRect();
+            const imageContainer = DOMCache.get('image-container');
+            if (!imageContainer) return;
             
+            invalidateRectCache(); // 使缓存失效，重新获取
+            const { containerRect } = getCachedRects();
+            if (!containerRect) return;
+
             dragOffset.x = e.clientX - containerRect.left - parseFloat(marker.style.left);
             dragOffset.y = e.clientY - containerRect.top - parseFloat(marker.style.top);
-            
+
             marker.classList.add('dragging');
-            
-            document.addEventListener('mousemove', onDrag);
-            document.addEventListener('mouseup', stopDrag);
-            
+
+            document.addEventListener('mousemove', onDrag, { passive: true });
+            document.addEventListener('mouseup', stopDrag, { passive: true });
+
             e.preventDefault();
         }
 
-        // 拖动中
+        // 拖动中（优化：使用节流和缓存的rect）
         function onDrag(e) {
             if (!draggedMarker) return;
-            
-            const imageContainer = document.getElementById('image-container');
-            const containerRect = imageContainer.getBoundingClientRect();
-            const lastFrameImage = document.getElementById('last-frame-image');
-            const imageRect = lastFrameImage.getBoundingClientRect();
-            
+
+            const { containerRect, imageRect } = getCachedRects();
+            if (!containerRect || !imageRect) return;
+
             const imageOffsetX = (containerRect.width - imageRect.width) / 2;
             const imageOffsetY = (containerRect.height - imageRect.height) / 2;
-            
+
             let newX = e.clientX - containerRect.left - dragOffset.x;
             let newY = e.clientY - containerRect.top - dragOffset.y;
-            
+
             // 限制在图像范围内
             newX = Math.max(imageOffsetX, Math.min(newX, imageOffsetX + imageRect.width));
             newY = Math.max(imageOffsetY, Math.min(newY, imageOffsetY + imageRect.height));
-            
-            draggedMarker.style.left = newX + 'px';
-            draggedMarker.style.top = newY + 'px';
-            
+
+            // 使用requestAnimationFrame优化DOM更新
+            requestAnimationFrame(() => {
+                if (draggedMarker) {
+                    draggedMarker.style.left = newX + 'px';
+                    draggedMarker.style.top = newY + 'px';
+                }
+            });
+
             // 更新对应的点数据
             const pointIndex = parseInt(draggedMarker.dataset.pointIndex);
             const objectIndex = parseInt(draggedMarker.dataset.objectIndex);
-            
+
             if (editingObjectIndex >= 0 && editingObjectPoints[pointIndex]) {
                 // 计算归一化坐标
                 const relativeX = newX - imageOffsetX;
                 const relativeY = newY - imageOffsetY;
                 const normalizedX = relativeX / imageRect.width;
                 const normalizedY = relativeY / imageRect.height;
-                
+
                 editingObjectPoints[pointIndex].x = normalizedX;
                 editingObjectPoints[pointIndex].y = normalizedY;
                 editingObjectPoints[pointIndex].displayX = newX;
@@ -1651,13 +2224,22 @@
 
         // 停止拖动
         function stopDrag() {
+            const wasEditing = editingObjectIndex >= 0; // 记录是否在编辑模式
+            
             if (draggedMarker) {
                 draggedMarker.classList.remove('dragging');
                 draggedMarker = null;
             }
-            
+
             document.removeEventListener('mousemove', onDrag);
             document.removeEventListener('mouseup', stopDrag);
+            
+            // 如果在编辑模式下拖动了点，自动更新 SAM3 mask 并保存
+            if (wasEditing && editingObjectPoints.length > 0) {
+                autoRequestSAMSegment();
+                // 自动保存（编辑模式下拖动点后自动保存）
+                scheduleAutoSave();
+            }
         }
 
         // 选择点
@@ -1666,11 +2248,11 @@
             document.querySelectorAll('.point-marker.selected').forEach(m => {
                 m.classList.remove('selected');
             });
-            
+
             // 选中当前点
             marker.classList.add('selected');
             selectedPointIndex = pointIndex;
-            
+
             // 如果是已保存的点，需要找到对应的对象和点
             if (isSaved) {
                 // 可以在这里添加编辑已保存点的功能
@@ -1682,55 +2264,66 @@
             // 如果在编辑模式下，删除编辑对象的点
             if (editingObjectIndex >= 0 && selectedPointIndex >= 0) {
                 saveHistory();
-                
+
                 // 移除标记
                 const markers = document.querySelectorAll('.point-marker.selected');
                 markers.forEach(marker => marker.remove());
-                
+
                 // 从编辑点数组中删除
                 editingObjectPoints.splice(selectedPointIndex, 1);
                 selectedPointIndex = -1;
-                
+
                 // 重新渲染编辑对象的点
                 const imageContainer = document.getElementById('image-container');
                 const editingMarkers = imageContainer.querySelectorAll('.point-marker.editing');
                 editingMarkers.forEach(marker => marker.remove());
-                
+
                 const obj = savedObjects[editingObjectIndex];
                 editingObjectPoints.forEach((point, idx) => {
                     createPointMarker(point, editingObjectIndex, false, obj.name, idx, true);
                 });
-                
+
                 updateObjectsList();
                 updateStats();
                 showStatus('已删除选中点', 'success');
+                
+                // 如果删除后还有点，自动更新 SAM3 mask
+                if (editingObjectPoints.length > 0) {
+                    autoRequestSAMSegment();
+                } else {
+                    // 如果没有点了，隐藏 mask
+                    resetSAMState();
+                }
+                
+                // 自动保存（编辑模式下删除点后自动保存）
+                scheduleAutoSave();
                 return;
             }
-            
+
             // 否则删除当前编辑对象的点
             if (selectedPointIndex < 0 || currentObjectIndex < 0) {
                 return;
             }
-            
+
             saveHistory();
-            
+
             // 移除标记
             const markers = document.querySelectorAll('.point-marker.selected');
             markers.forEach(marker => marker.remove());
-            
+
             // 从数组中删除点
             currentObjectPoints.splice(selectedPointIndex, 1);
             selectedPointIndex = -1;
-            
+
             // 重新渲染当前对象的点
             const imageContainer = document.getElementById('image-container');
             const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
             editingMarkers.forEach(marker => marker.remove());
-            
+
             currentObjectPoints.forEach((point, idx) => {
                 createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
             });
-            
+
             updateObjectsList();
             updateStats();
             showStatus('已删除选中点', 'success');
@@ -1755,7 +2348,7 @@
                     points: points,
                     type: currentObjectType
                 });
-                
+
                 // 清除当前对象的标记点（只清除正在编辑的标记点）
                 const imageContainer = document.getElementById('image-container');
                 const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
@@ -1778,16 +2371,16 @@
             if (category === null || category.trim() === '') {
                 return; // 用户取消或输入为空
             }
-            
+
             // 计算新的对象索引（包括已保存的对象和正在编辑的对象）
             currentObjectIndex = savedObjects.length + editingObjects.length;
             currentObjectPoints = [];
             currentObjectName = category.trim();
             currentObjectType = 'object'; // 设置为对象类型
             selectedPointIndex = -1;
-            
+
             saveHistory();
-            
+
             console.log(`[标注交互] 添加新对象`, {
                 video: currentVideo.name,
                 object_index: currentObjectIndex,
@@ -1797,7 +2390,7 @@
                 editing_objects_count: editingObjects.length,
                 timestamp: new Date().toISOString()
             });
-            
+
             showStatus(`已添加目标对象: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
             scrollToObjectsListBottom();
@@ -1822,7 +2415,7 @@
                     points: points,
                     type: currentObjectType
                 });
-                
+
                 // 清除当前对象的标记点（只清除正在编辑的标记点）
                 const imageContainer = document.getElementById('image-container');
                 const editingMarkers = imageContainer.querySelectorAll('.editing-marker');
@@ -1845,16 +2438,16 @@
             if (category === null || category.trim() === '') {
                 return; // 用户取消或输入为空
             }
-            
+
             // 计算新的对象索引（包括已保存的对象和正在编辑的对象）
             currentObjectIndex = savedObjects.length + editingObjects.length;
             currentObjectPoints = [];
             currentObjectName = category.trim();
             currentObjectType = 'space'; // 设置为放置空间类型
             selectedPointIndex = -1;
-            
+
             saveHistory();
-            
+
             console.log(`[标注交互] 添加放置空间`, {
                 video: currentVideo.name,
                 object_index: currentObjectIndex,
@@ -1864,7 +2457,7 @@
                 editing_objects_count: editingObjects.length,
                 timestamp: new Date().toISOString()
             });
-            
+
             showStatus(`已添加放置空间: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
             scrollToObjectsListBottom();
@@ -1893,14 +2486,14 @@
                 // 检查这个标记点是否属于当前编辑的对象（通过检查位置）
                 const markerX = parseFloat(marker.style.left);
                 const markerY = parseFloat(marker.style.top);
-                
+
                 // 检查是否与当前对象的点匹配
                 const isCurrentObjectPoint = currentObjectPoints.some(p => {
                     const expectedX = p.displayX;
                     const expectedY = p.displayY;
                     return Math.abs(markerX - expectedX) < 5 && Math.abs(markerY - expectedY) < 5;
                 });
-                
+
                 if (isCurrentObjectPoint) {
                     marker.remove();
                 }
@@ -1921,31 +2514,31 @@
             if (!confirm(`确定要删除对象 "${savedObjects[index].name}" 吗？`)) {
                 return;
             }
-            
+
             // 如果正在编辑该对象，先取消编辑
             if (editingObjectIndex === index) {
                 cancelEditingObject();
             }
-            
+
             saveHistory();
             savedObjects.splice(index, 1);
-            
+
             // 重新渲染
             const imageContainer = document.getElementById('image-container');
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             renderSavedObjects();
             if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
                 currentObjectPoints.forEach((point, idx) => {
                     createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
                 });
             }
-            
+
             updateObjectsList();
             updateStats();
             showStatus('已删除对象', 'success');
-            
+
             // 自动保存
             scheduleAutoSave();
         }
@@ -1959,23 +2552,23 @@
                     cancelEditingObject();
                 }
             }
-            
+
             editingObjectIndex = index;
             const obj = savedObjects[index];
-            
+
             // 将对象点转换为可编辑格式
             const imageContainer = document.getElementById('image-container');
             const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
             const containerRect = imageContainer.getBoundingClientRect();
             const imageOffsetX = (containerRect.width - imageRect.width) / 2;
             const imageOffsetY = (containerRect.height - imageRect.height) / 2;
-            
+
             editingObjectPoints = obj.points.map(point => {
                 const normalizedX = point[1] / 1000;
                 const normalizedY = point[0] / 1000;
                 const displayX = normalizedX * imageRect.width + imageOffsetX;
                 const displayY = normalizedY * imageRect.height + imageOffsetY;
-                
+
                 return {
                     x: normalizedX,
                     y: normalizedY,
@@ -1983,11 +2576,11 @@
                     displayY: displayY
                 };
             });
-            
+
             // 清除所有标记并重新渲染
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             // 渲染其他已保存的对象（非编辑模式）
             savedObjects.forEach((savedObj, objIdx) => {
                 if (objIdx !== index) {
@@ -1996,7 +2589,7 @@
                         const normalizedY = point[0] / 1000;
                         const displayX = normalizedX * imageRect.width + imageOffsetX;
                         const displayY = normalizedY * imageRect.height + imageOffsetY;
-                        
+
                         createPointMarker(
                             { displayX, displayY },
                             objIdx,
@@ -2008,68 +2601,70 @@
                     });
                 }
             });
-            
+
             // 渲染正在编辑的对象点（编辑模式）
             editingObjectPoints.forEach((point, idx) => {
                 createPointMarker(point, index, false, obj.name, idx, true);
             });
-            
+
             // 渲染当前正在编辑的新对象点（如果有）
             if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
                 currentObjectPoints.forEach((point, idx) => {
                     createPointMarker(point, currentObjectIndex, false, currentObjectName, idx, false);
                 });
             }
-            
-            // 显示保存和取消按钮
-            document.getElementById('save-editing-btn').style.display = 'inline-block';
+
+            // 显示取消按钮（保存编辑按钮已隐藏，改为自动保存）
+            document.getElementById('save-editing-btn').style.display = 'none';
             document.getElementById('cancel-editing-btn').style.display = 'inline-block';
-            
+
             updateObjectsList();
-            showStatus(`正在编辑对象: ${obj.name}，可以拖动点进行编辑，点击点后按Delete删除`, 'success');
+            showStatus(`正在编辑对象: ${obj.name}，可以拖动点进行编辑，点击图像添加新点，点击点后按Delete删除（修改后会自动保存）`, 'success');
         }
 
-        // 保存编辑的对象
+        // 保存编辑的对象（自动保存到文件）
         function saveEditingObject() {
             if (editingObjectIndex < 0 || editingObjectPoints.length === 0) {
                 return;
             }
-            
+
             saveHistory();
-            
+
             // 更新对象点数据
             const points = editingObjectPoints.map(p => [
                 Math.round(p.y * 1000),  // y坐标 (0-1000)
                 Math.round(p.x * 1000)   // x坐标 (0-1000)
             ]);
-            
+
             savedObjects[editingObjectIndex].points = points;
-            
+
             // 退出编辑模式
             editingObjectIndex = -1;
             editingObjectPoints = [];
-            
+
             // 隐藏保存和取消按钮
             document.getElementById('save-editing-btn').style.display = 'none';
             document.getElementById('cancel-editing-btn').style.display = 'none';
-            
+
             // 重新渲染
             const imageContainer = document.getElementById('image-container');
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             renderSavedObjects();
             if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
                 currentObjectPoints.forEach((point, idx) => {
                     createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
                 });
             }
-            
+
+            // 重新渲染 mask（因为点已经更新，mask 也应该更新）
+            renderExistingMasks();
+
             updateObjectsList();
             updateStats();
-            showStatus('已保存编辑', 'success');
             
-            // 自动保存
+            // 自动保存到文件（静默保存）
             scheduleAutoSave();
         }
 
@@ -2078,27 +2673,27 @@
             if (editingObjectIndex < 0) {
                 return;
             }
-            
+
             editingObjectIndex = -1;
             editingObjectPoints = [];
             selectedPointIndex = -1;
-            
+
             // 隐藏保存和取消按钮
             document.getElementById('save-editing-btn').style.display = 'none';
             document.getElementById('cancel-editing-btn').style.display = 'none';
-            
+
             // 重新渲染
             const imageContainer = document.getElementById('image-container');
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             renderSavedObjects();
             if (currentObjectIndex >= 0 && currentObjectPoints.length > 0) {
                 currentObjectPoints.forEach((point, idx) => {
                     createPointMarker(point, currentObjectIndex, false, currentObjectName, idx);
                 });
             }
-            
+
             updateObjectsList();
             showStatus('已取消编辑', 'success');
         }
@@ -2108,23 +2703,29 @@
             if (autoSaveTimer) {
                 clearTimeout(autoSaveTimer);
             }
-            
+
             autoSaveTimer = setTimeout(() => {
-                if (currentVideo && savedObjects.length > 0) {
-                    const taskTemplate = document.getElementById('task-template').value.trim();
-                    const scene = document.getElementById('scene').value.trim();
-                    
-                    if (taskTemplate && scene) {
-                        saveAnnotations(true); // 静默保存
-                    }
+                if (!currentVideo) return;
+                
+                const taskTemplate = document.getElementById('task-template').value.trim();
+                const scene = document.getElementById('scene').value.trim();
+
+                if (!taskTemplate || !scene) return;
+                
+                // 如果有已保存的对象，或者正在编辑对象，或者正在创建新对象，则保存
+                if (savedObjects.length > 0 || editingObjectIndex >= 0 || (currentObjectIndex >= 0 && currentObjectPoints.length > 0)) {
+                    saveAnnotations(true); // 静默保存
                 }
-            }, 5000); // 5秒后自动保存
+            }, 2000); // 2秒后自动保存（缩短延迟，提高响应速度）
         }
 
-        // 更新对象列表显示（显示所有对象：已保存的 + 正在编辑的 + 当前正在编辑的）
+        // 更新对象列表显示（优化：使用DocumentFragment批量创建）
         function updateObjectsList() {
-            const container = document.getElementById('objects-list');
-            container.innerHTML = '';
+            const container = DOMCache.get('objects-list');
+            if (!container) return;
+            
+            // 使用DocumentFragment批量创建DOM元素
+            const fragment = document.createDocumentFragment();
 
             // 显示已保存的对象
             savedObjects.forEach((obj, index) => {
@@ -2133,64 +2734,164 @@
                 if (editingObjectIndex === index) {
                     objectItem.classList.add('active-editing');
                 }
+                
                 const displayName = obj.name || `目标对象${index + 1}`;
                 const objType = obj.type || 'object';
-                const typeLabel = objType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
-                const editingStatus = editingObjectIndex === index ? 
-                    '<span style="font-size: 0.7em; color: #667eea;">(编辑中)</span>' : 
-                    '<span style="font-size: 0.7em; color: #28a745;">(已保存)</span>';
-                objectItem.innerHTML = `
-                    <div class="object-item-header">
-                        <div class="object-item-name">${displayName} ${typeLabel} ${editingStatus}</div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="object-item-points">${obj.points.length} 个点</div>
-                            <div class="object-item-actions">
-                                <button class="btn-icon btn-edit" onclick="editObject(${index})" title="编辑对象点">✏️</button>
-                                <button class="btn-icon btn-delete" onclick="deleteObject(${index})" title="删除对象">🗑️</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(objectItem);
+                
+                // 创建header元素
+                const header = document.createElement('div');
+                header.className = 'object-item-header';
+                
+                // 创建name元素
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'object-item-name';
+                
+                const nameText = document.createTextNode(displayName + ' ');
+                nameDiv.appendChild(nameText);
+                
+                // 创建type label
+                const typeSpan = document.createElement('span');
+                typeSpan.style.fontSize = '0.7em';
+                typeSpan.style.color = objType === 'space' ? '#667eea' : '#6c757d';
+                typeSpan.textContent = objType === 'space' ? '[放置空间]' : '[对象]';
+                nameDiv.appendChild(typeSpan);
+                
+                // 创建status span
+                const statusSpan = document.createElement('span');
+                statusSpan.style.fontSize = '0.7em';
+                if (editingObjectIndex === index) {
+                    statusSpan.style.color = '#667eea';
+                    statusSpan.textContent = ' (编辑中)';
+                } else {
+                    statusSpan.style.color = '#28a745';
+                    statusSpan.textContent = ' (已保存)';
+                }
+                nameDiv.appendChild(statusSpan);
+                
+                // 创建actions容器
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.alignItems = 'center';
+                actionsDiv.style.gap = '10px';
+                
+                const pointsDiv = document.createElement('div');
+                pointsDiv.className = 'object-item-points';
+                pointsDiv.textContent = `${obj.points.length} 个点`;
+                
+                const actionsContainer = document.createElement('div');
+                actionsContainer.className = 'object-item-actions';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'btn-icon btn-edit';
+                editBtn.title = '编辑对象点';
+                editBtn.textContent = '✏️';
+                editBtn.onclick = () => editObject(index);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-icon btn-delete';
+                deleteBtn.title = '删除对象';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.onclick = () => deleteObject(index);
+                
+                actionsContainer.appendChild(editBtn);
+                actionsContainer.appendChild(deleteBtn);
+                
+                actionsDiv.appendChild(pointsDiv);
+                actionsDiv.appendChild(actionsContainer);
+                
+                header.appendChild(nameDiv);
+                header.appendChild(actionsDiv);
+                objectItem.appendChild(header);
+                
+                fragment.appendChild(objectItem);
             });
 
             // 显示正在编辑的对象（已标注点但未保存的对象）
             editingObjects.forEach((obj, index) => {
                 const objectItem = document.createElement('div');
                 objectItem.className = 'object-item editing-object';
+                
+                const header = document.createElement('div');
+                header.className = 'object-item-header';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'object-item-name';
+                
                 const displayName = obj.name || `目标对象 ${savedObjects.length + index + 1}`;
                 const objType = obj.type || 'object';
-                const typeLabel = objType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
-                objectItem.innerHTML = `
-                    <div class="object-item-header">
-                        <div class="object-item-name">${displayName} ${typeLabel} <span style="font-size: 0.7em; color: #ffc107;">(待保存)</span></div>
-                        <div class="object-item-points">${obj.points.length} 个点</div>
-                    </div>
-                `;
-                container.appendChild(objectItem);
+                
+                nameDiv.appendChild(document.createTextNode(displayName + ' '));
+                
+                const typeSpan = document.createElement('span');
+                typeSpan.style.fontSize = '0.7em';
+                typeSpan.style.color = objType === 'space' ? '#667eea' : '#6c757d';
+                typeSpan.textContent = objType === 'space' ? '[放置空间]' : '[对象]';
+                nameDiv.appendChild(typeSpan);
+                
+                const statusSpan = document.createElement('span');
+                statusSpan.style.fontSize = '0.7em';
+                statusSpan.style.color = '#ffc107';
+                statusSpan.textContent = ' (待保存)';
+                nameDiv.appendChild(statusSpan);
+                
+                const pointsDiv = document.createElement('div');
+                pointsDiv.className = 'object-item-points';
+                pointsDiv.textContent = `${obj.points.length} 个点`;
+                
+                header.appendChild(nameDiv);
+                header.appendChild(pointsDiv);
+                objectItem.appendChild(header);
+                
+                fragment.appendChild(objectItem);
             });
 
             // 显示当前正在编辑的对象
             if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                 const objectItem = document.createElement('div');
                 objectItem.className = 'object-item editing-object';
+                
+                const header = document.createElement('div');
+                header.className = 'object-item-header';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'object-item-name';
+                
                 const displayName = currentObjectName || `目标对象 ${currentObjectIndex + 1}`;
-                const typeLabel = currentObjectType === 'space' ? '<span style="font-size: 0.7em; color: #667eea;">[放置空间]</span>' : '<span style="font-size: 0.7em; color: #6c757d;">[对象]</span>';
-                objectItem.innerHTML = `
-                    <div class="object-item-header">
-                        <div class="object-item-name">${displayName} ${typeLabel} <span style="font-size: 0.7em; color: #ffc107;">(编辑中)</span></div>
-                        <div class="object-item-points">${currentObjectPoints.length} 个点</div>
-                    </div>
-                `;
-                container.appendChild(objectItem);
+                nameDiv.appendChild(document.createTextNode(displayName + ' '));
+                
+                const typeSpan = document.createElement('span');
+                typeSpan.style.fontSize = '0.7em';
+                typeSpan.style.color = currentObjectType === 'space' ? '#667eea' : '#6c757d';
+                typeSpan.textContent = currentObjectType === 'space' ? '[放置空间]' : '[对象]';
+                nameDiv.appendChild(typeSpan);
+                
+                const statusSpan = document.createElement('span');
+                statusSpan.style.fontSize = '0.7em';
+                statusSpan.style.color = '#ffc107';
+                statusSpan.textContent = ' (编辑中)';
+                nameDiv.appendChild(statusSpan);
+                
+                const pointsDiv = document.createElement('div');
+                pointsDiv.className = 'object-item-points';
+                pointsDiv.textContent = `${currentObjectPoints.length} 个点`;
+                
+                header.appendChild(nameDiv);
+                header.appendChild(pointsDiv);
+                objectItem.appendChild(header);
+                
+                fragment.appendChild(objectItem);
             }
+            
+            // 一次性更新DOM
+            container.innerHTML = '';
+            container.appendChild(fragment);
         }
 
         // 滚动到对象列表底部
         function scrollToObjectsListBottom() {
             const container = document.getElementById('objects-list');
             if (!container) return;
-            
+
             // 等待 DOM 更新完成（减少延迟时间）
             setTimeout(() => {
                 // 方法1: 直接滚动到容器底部（最快）
@@ -2198,7 +2899,7 @@
                 if (parentContainer && parentContainer.scrollHeight > parentContainer.clientHeight) {
                     parentContainer.scrollTop = parentContainer.scrollHeight;
                 }
-                
+
                 // 方法2: 滚动到最后一个对象项（备用方法）
                 const lastItem = container.lastElementChild;
                 if (lastItem) {
@@ -2240,7 +2941,7 @@
 
             // 兼容旧的objects字段和新的object_space字段
             const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
-            
+
             if (!annotation || objectSpaceList.length === 0) {
                 // 清空所有字段和显示
                 currentObjectIndex = -1;
@@ -2248,7 +2949,7 @@
                 currentObjectName = '';
                 currentObjectType = 'object'; // 重置对象类型
                 savedObjects = []; // 确保清空已保存对象列表
-                
+
                 // 如果是未标注的视频，保留全局任务模板和场景的值
                 // 如果全局值存在，则使用全局值；否则清空
                 if (!annotation) {
@@ -2263,13 +2964,13 @@
                         document.getElementById('scene').value = '';
                     }
                 }
-                
+
                 // 清空ASR结果显示
                 document.getElementById('asr-text-content').style.display = 'none';
                 document.getElementById('asr-error').style.display = 'none';
                 document.getElementById('asr-loading').style.display = 'none';
                 currentASRResult = null;
-                
+
                 updateObjectsList();
                 return;
             }
@@ -2312,7 +3013,8 @@
             savedObjects = objectSpaceList.map(obj => ({
                 name: obj.name || '',
                 points: obj.points || [],
-                type: obj.type || 'object'  // 如果没有type字段，默认为'object'（兼容旧数据）
+                type: obj.type || 'object',  // 如果没有type字段，默认为'object'（兼容旧数据）
+                mask: obj.mask || null       // 确保复制 mask 字段
             }));
 
             // 为每个已保存的对象创建标记点
@@ -2323,53 +3025,57 @@
         }
 
         // 渲染已保存的对象标记点（包括已保存的和正在编辑的对象）
+        // 渲染已保存的对象（优化：使用缓存的rect和批量创建）
         function renderSavedObjects() {
-            const imageContainer = document.getElementById('image-container');
-            const imageRect = document.getElementById('last-frame-image').getBoundingClientRect();
-            const containerRect = imageContainer.getBoundingClientRect();
-            
+            invalidateRectCache(); // 使缓存失效，重新获取
+            const { containerRect, imageRect } = getCachedRects();
+            if (!containerRect || !imageRect) return;
+
             const imageOffsetX = (containerRect.width - imageRect.width) / 2;
             const imageOffsetY = (containerRect.height - imageRect.height) / 2;
 
-            // 渲染已保存的对象
-            savedObjects.forEach((obj, objIndex) => {
-                obj.points.forEach((point, pointIdx) => {
-                    // point格式应该是 [y, x] 归一化坐标 (0-1000)
-                    const normalizedX = point[1] / 1000;
-                    const normalizedY = point[0] / 1000;
-                    
-                    const displayX = normalizedX * imageRect.width + imageOffsetX;
-                    const displayY = normalizedY * imageRect.height + imageOffsetY;
-                    
-                    // 创建已保存的标记点
-                    createPointMarker(
-                        { displayX, displayY },
-                        objIndex,
-                        true, // isSaved = true
-                        obj.name,
-                        pointIdx
-                    );
-                });
-            });
+            // 使用requestAnimationFrame批量渲染，减少重排
+            requestAnimationFrame(() => {
+                // 渲染已保存的对象
+                savedObjects.forEach((obj, objIndex) => {
+                    obj.points.forEach((point, pointIdx) => {
+                        // point格式应该是 [y, x] 归一化坐标 (0-1000)
+                        const normalizedX = point[1] / 1000;
+                        const normalizedY = point[0] / 1000;
 
-            // 渲染正在编辑的对象（已标注点但未保存的对象）
-            editingObjects.forEach((obj, objIndex) => {
-                obj.points.forEach((point, pointIdx) => {
-                    // point格式应该是 [y, x] 归一化坐标 (0-1000)
-                    const normalizedX = point[1] / 1000;
-                    const normalizedY = point[0] / 1000;
-                    
-                    const displayX = normalizedX * imageRect.width + imageOffsetX;
-                    const displayY = normalizedY * imageRect.height + imageOffsetY;
-                    
-                    // 创建正在编辑的标记点（使用已保存的样式，但标记为待保存）
-                    createPointMarker(
-                        { displayX, displayY },
-                        savedObjects.length + objIndex,
-                        true, // isSaved = true（使用已保存样式）
-                        obj.name,
-                        pointIdx
-                    );
+                        const displayX = normalizedX * imageRect.width + imageOffsetX;
+                        const displayY = normalizedY * imageRect.height + imageOffsetY;
+
+                        // 创建已保存的标记点
+                        createPointMarker(
+                            { displayX, displayY },
+                            objIndex,
+                            true, // isSaved = true
+                            obj.name,
+                            pointIdx
+                        );
+                    });
+                });
+
+                // 渲染正在编辑的对象（已标注点但未保存的对象）
+                editingObjects.forEach((obj, objIndex) => {
+                    obj.points.forEach((point, pointIdx) => {
+                        // point格式应该是 [y, x] 归一化坐标 (0-1000)
+                        const normalizedX = point[1] / 1000;
+                        const normalizedY = point[0] / 1000;
+
+                        const displayX = normalizedX * imageRect.width + imageOffsetX;
+                        const displayY = normalizedY * imageRect.height + imageOffsetY;
+
+                        // 创建正在编辑的标记点（使用已保存的样式，但标记为待保存）
+                        createPointMarker(
+                            { displayX, displayY },
+                            savedObjects.length + objIndex,
+                            true, // isSaved = true（使用已保存样式）
+                            obj.name,
+                            pointIdx
+                        );
+                    });
                 });
             });
         }
@@ -2403,29 +3109,29 @@
             editingObjectIndex = -1;
             editingObjectPoints = [];
             currentASRResult = null; // 清空ASR结果
-            
+
             // 清空任务模板和场景
             document.getElementById('task-template').value = '';
             document.getElementById('scene').value = '';
-            
+
             // 清除所有标记点
             const imageContainer = document.getElementById('image-container');
             const markers = imageContainer.querySelectorAll('.point-marker');
             markers.forEach(marker => marker.remove());
-            
+
             // 隐藏编辑按钮
             document.getElementById('save-editing-btn').style.display = 'none';
             document.getElementById('cancel-editing-btn').style.display = 'none';
-            
+
             // 清空ASR结果显示
             document.getElementById('asr-text-content').style.display = 'none';
             document.getElementById('asr-error').style.display = 'none';
             document.getElementById('asr-loading').style.display = 'none';
-            
+
             // 更新UI
             updateObjectsList();
             updateStats();
-            
+
             // 构建标注数据（标记为无效）
             const annotationKey = `${folderPath}|${currentVideo.name}`;
             const existingAnnotation = annotations[annotationKey];
@@ -2443,7 +3149,7 @@
             };
 
             annotations[annotationKey] = annotationData;
-            
+
             console.log(`[标注交互] 标记为无效视频`, {
                 video: currentVideo.name,
                 folder: folderPath,
@@ -2470,7 +3176,7 @@
                 displayVideoList();
                 updateProgress();
                 updateStats();
-                
+
                 // 延迟一下再跳转，确保状态已更新
                 setTimeout(() => {
                     jumpToNextUnannotated();
@@ -2490,10 +3196,19 @@
             // 检查是否是无效视频
             const annotationKey = `${folderPath}|${currentVideo.name}`;
             const existingAnnotation = annotations[annotationKey];
-            
+
             // 收集所有要保存的对象（包括已保存的、正在编辑的和当前正在编辑的对象）
-            const allObjectsToSave = [...savedObjects, ...editingObjects];
+            // 如果正在编辑对象，需要先更新 savedObjects 中的点数据
+            if (editingObjectIndex >= 0 && editingObjectPoints.length > 0) {
+                const points = editingObjectPoints.map(p => [
+                    Math.round(p.y * 1000),  // y坐标 (0-1000)
+                    Math.round(p.x * 1000)   // x坐标 (0-1000)
+                ]);
+                savedObjects[editingObjectIndex].points = points;
+            }
             
+            const allObjectsToSave = [...savedObjects, ...editingObjects];
+
             // 如果有当前正在编辑的对象，也添加到保存列表
             if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                 const points = currentObjectPoints.map(p => [
@@ -2504,12 +3219,13 @@
                 const currentObjectData = {
                     name: currentObjectName,
                     points: points,
-                    type: currentObjectType
+                    type: currentObjectType,
+                    mask: window.currentObjectMask || null // 保存当前生成的 Mask
                 };
-                
+
                 allObjectsToSave.push(currentObjectData);
             }
-            
+
             if (existingAnnotation && existingAnnotation.is_invalid) {
                 // 如果之前标记为无效，现在要保存正常标注，需要清除无效标记
                 // 继续执行保存流程
@@ -2520,7 +3236,7 @@
 
             const taskTemplate = document.getElementById('task-template').value.trim();
             const scene = document.getElementById('scene').value.trim();
-            
+
             // 更新全局变量
             globalTaskTemplate = taskTemplate;
             globalScene = scene;
@@ -2546,7 +3262,7 @@
             };
 
             annotations[annotationKey] = annotationData;
-            
+
             // 打印保存标注的交互信息
             console.log(`[标注交互] 保存标注到文件`, {
                 video: currentVideo.name,
@@ -2581,7 +3297,7 @@
                 // 保存成功后，将所有正在编辑的对象保存到 savedObjects，并重置状态
                 // 先将 editingObjects 中的对象保存到 savedObjects
                 savedObjects.push(...editingObjects);
-                
+
                 // 如果有当前正在编辑的对象，也保存到 savedObjects
                 if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                     const points = currentObjectPoints.map(p => [
@@ -2594,7 +3310,7 @@
                         type: currentObjectType
                     });
                 }
-                
+
                 // 清空所有临时编辑状态
                 editingObjects = [];
                 currentObjectIndex = -1;
@@ -2602,7 +3318,7 @@
                 currentObjectName = '';
                 currentObjectType = 'object';
                 selectedPointIndex = -1;
-                
+
                 // 重新渲染标记点
                 const imageContainer = document.getElementById('image-container');
                 const markers = imageContainer.querySelectorAll('.point-marker');
@@ -2634,7 +3350,7 @@
         function jumpToNextUnannotated() {
             // 从当前视频的下一个开始查找
             const startIndex = currentVideoIndex >= 0 ? currentVideoIndex + 1 : 0;
-            
+
             for (let i = startIndex; i < videos.length; i++) {
                 const video = videos[i];
                 const annotationKey = `${folderPath}|${video.name}`;
@@ -2642,14 +3358,14 @@
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
-                
+
                 // 跳过无效视频和已标注的视频
                 if (!isInvalid && !isAnnotated) {
                     selectVideo(i);
                     return;
                 }
             }
-            
+
             // 如果从当前位置往后没找到，从头开始查找
             for (let i = 0; i < startIndex; i++) {
                 const video = videos[i];
@@ -2658,14 +3374,14 @@
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
-                
+
                 // 跳过无效视频和已标注的视频
                 if (!isInvalid && !isAnnotated) {
                     selectVideo(i);
                     return;
                 }
             }
-            
+
             showStatus('所有视频都已标注或标记为无效', 'success');
         }
 
@@ -2677,13 +3393,13 @@
                 const annotation = annotations[annotationKey];
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
-                
+
                 if (!isAnnotated) {
                     selectVideo(i);
                     return;
                 }
             }
-            
+
             showStatus('所有视频都已标注', 'success');
         }
 
@@ -2693,7 +3409,7 @@
             statusDiv.textContent = message;
             statusDiv.className = `status-message status-${type}`;
             statusDiv.style.display = 'block';
-            
+
             setTimeout(() => {
                 statusDiv.style.display = 'none';
             }, 3000);
@@ -2719,7 +3435,7 @@
                 document.getElementById('asr-text-content').style.display = 'block';
                 document.getElementById('asr-error').style.display = 'none';
                 document.getElementById('asr-loading').style.display = 'none';
-            } 
+            }
             // 如果有多个句子，合并显示
             else if (asrResult.sentences && asrResult.sentences.length > 0) {
                 const fullText = asrResult.sentences.map(s => s.text).join(' ');
@@ -2742,7 +3458,276 @@
                 document.getElementById('asr-loading').style.display = 'none';
             }
         }
+
+        // ==================== SAM3 分割功能 ====================
+
+        // 自动请求 SAM3 分割（带去抖动，支持编辑模式）
+        function autoRequestSAMSegment() {
+            // 清除之前的定时器
+            if (samDebounceTimer) {
+                clearTimeout(samDebounceTimer);
+            }
+
+            // 设置新的定时器
+            samDebounceTimer = setTimeout(async () => {
+                if (!currentVideo) {
+                    return;
+                }
+
+                // 收集点：优先使用编辑模式下的点，否则使用当前创建对象的点
+                let allPoints = [];
+                
+                if (editingObjectIndex >= 0 && editingObjectPoints.length > 0) {
+                    // 编辑模式下，使用编辑对象的点
+                    allPoints = editingObjectPoints.map(p => [p.x, p.y]);
+                } else if (currentObjectPoints.length > 0) {
+                    // 创建新对象模式下，使用当前对象的点
+                    allPoints = currentObjectPoints.map(p => [p.x, p.y]);
+                } else {
+                    return; // 没有点，不请求
+                }
+
+                // 显示加载状态
+                isSAMLoading = true;
+                showSAMStatus('🔄 正在请求 SAM3 分割...', 'loading');
+
+                try {
+                    const response = await fetch('/api/simple_annotation/sam_segment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            folder_path: folderPath,
+                            video_name: currentVideo.name,
+                            points: allPoints,
+                            point_labels: allPoints.map(() => 1)
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || '请求失败');
+                    }
+
+                    if (data.success && data.mask_image_url) {
+                        samMaskUrl = data.mask_image_url;
+                        const maskOverlay = document.getElementById('sam-mask-overlay');
+                        maskOverlay.src = data.mask_image_url + '?t=' + Date.now();
+                        maskOverlay.style.display = 'block';
+                        samMaskVisible = true;
+                        document.getElementById('sam-toggle-btn').textContent = '👁️ 隐藏 SAM Mask (M)';
+                        showSAMStatus(`✅ ${data.message}`, 'success');
+                        console.log('[SAM3] 自动分割成功:', data);
+                        
+                        // 如果在编辑模式下，保存 mask 数据到编辑对象
+                        if (editingObjectIndex >= 0 && data.mask) {
+                            if (!savedObjects[editingObjectIndex]) {
+                                console.warn('[SAM3] 编辑对象索引无效:', editingObjectIndex);
+                            } else {
+                                savedObjects[editingObjectIndex].mask = data.mask;
+                                console.log('[SAM3] 已更新编辑对象的 mask 数据:', {
+                                    object_index: editingObjectIndex,
+                                    object_name: savedObjects[editingObjectIndex].name,
+                                    mask_score: data.mask.score,
+                                    mask_bbox: data.mask.bbox
+                                });
+                                // mask 更新后自动保存
+                                scheduleAutoSave();
+                            }
+                        } else if (data.mask) {
+                            // 如果是创建新对象模式，暂存 mask 数据
+                            window.currentObjectMask = data.mask;
+                            console.log('[SAM3] 已暂存新对象的 mask 数据:', {
+                                mask_score: data.mask.score,
+                                mask_bbox: data.mask.bbox
+                            });
+                            // mask 更新后自动保存
+                            scheduleAutoSave();
+                        }
+                    } else {
+                        showSAMStatus('⚠️ ' + (data.message || '未检测到分割结果'), 'warning');
+                    }
+                } catch (error) {
+                    console.error('[SAM3] 自动分割失败:', error);
+                    showSAMStatus('❌ 分割失败: ' + error.message, 'error');
+                } finally {
+                    isSAMLoading = false;
+                }
+            }, SAM_DEBOUNCE_DELAY);
+        }
+
+        // 请求 SAM3 分割
+        async function requestSAMSegment() {
+            if (!currentVideo) {
+                showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            // 收集所有当前对象的点
+            const allPoints = [];
+
+            // 优先使用编辑模式下的点
+            if (editingObjectIndex >= 0 && editingObjectPoints.length > 0) {
+                editingObjectPoints.forEach(p => {
+                    allPoints.push([p.x, p.y]);
+                });
+            } else if (currentObjectPoints.length > 0) {
+                // 否则使用当前创建对象的点
+                currentObjectPoints.forEach(p => {
+                    allPoints.push([p.x, p.y]);
+                });
+            }
+
+            // 如果没有点，提示用户
+            if (allPoints.length === 0) {
+                showStatus('请先添加至少一个标注点', 'error');
+                return;
+            }
+
+            // 显示加载状态
+            isSAMLoading = true;
+            showSAMStatus('🔄 正在请求 SAM3 分割...', 'loading');
+            document.getElementById('sam-request-btn').disabled = true;
+
+            try {
+                const response = await fetch('/api/simple_annotation/sam_segment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        folder_path: folderPath,
+                        video_name: currentVideo.name,
+                        points: allPoints,
+                        point_labels: allPoints.map(() => 1)  // 全部为前景点
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '请求失败');
+                }
+
+                if (data.success && data.mask_image_url) {
+                    // 保存 mask URL
+                    samMaskUrl = data.mask_image_url;
+
+                    // 显示 mask
+                    const maskOverlay = document.getElementById('sam-mask-overlay');
+                    maskOverlay.src = data.mask_image_url + '?t=' + Date.now();  // 添加时间戳避免缓存
+                    maskOverlay.style.display = 'block';
+                    samMaskVisible = true;
+
+                    // 更新按钮文字
+                    document.getElementById('sam-toggle-btn').textContent = '👁️ 隐藏 SAM Mask (M)';
+
+                    showSAMStatus(`✅ ${data.message}`, 'success');
+                    console.log('[SAM3] 分割成功:', data);
+                    
+                    // 如果在编辑模式下，保存 mask 数据到编辑对象
+                    if (editingObjectIndex >= 0 && data.mask) {
+                        if (!savedObjects[editingObjectIndex]) {
+                            console.warn('[SAM3] 编辑对象索引无效:', editingObjectIndex);
+                        } else {
+                            savedObjects[editingObjectIndex].mask = data.mask;
+                            console.log('[SAM3] 已更新编辑对象的 mask 数据:', {
+                                object_index: editingObjectIndex,
+                                object_name: savedObjects[editingObjectIndex].name,
+                                mask_score: data.mask.score,
+                                mask_bbox: data.mask.bbox
+                            });
+                            // mask 更新后自动保存
+                            scheduleAutoSave();
+                        }
+                    } else if (data.mask) {
+                        // 如果是创建新对象模式，暂存 mask 数据
+                        window.currentObjectMask = data.mask;
+                        // mask 更新后自动保存
+                        scheduleAutoSave();
+                    }
+                } else {
+                    showSAMStatus('⚠️ ' + (data.message || '未检测到分割结果'), 'warning');
+                }
+
+            } catch (error) {
+                console.error('[SAM3] 分割失败:', error);
+                showSAMStatus('❌ 分割失败: ' + error.message, 'error');
+            } finally {
+                isSAMLoading = false;
+                document.getElementById('sam-request-btn').disabled = false;
+            }
+        }
+
+        // 切换 SAM Mask 显示/隐藏
+        function toggleSAMMask() {
+            const maskOverlay = document.getElementById('sam-mask-overlay');
+            const toggleBtn = document.getElementById('sam-toggle-btn');
+
+            if (samMaskVisible) {
+                // 隐藏 mask
+                maskOverlay.style.display = 'none';
+                samMaskVisible = false;
+                toggleBtn.textContent = '🎭 显示 SAM Mask (M)';
+            } else {
+                // 显示 mask（如果有）
+                if (samMaskUrl) {
+                    maskOverlay.style.display = 'block';
+                    samMaskVisible = true;
+                    toggleBtn.textContent = '👁️ 隐藏 SAM Mask (M)';
+                } else {
+                    showSAMStatus('⚠️ 请先点击"请求 SAM3 分割"按钮生成 mask', 'warning');
+                }
+            }
+        }
+
+        // 显示 SAM 状态信息
+        function showSAMStatus(message, type) {
+            const statusDiv = document.getElementById('sam-status');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+
+            // 设置样式
+            statusDiv.style.background = type === 'success' ? '#d4edda' :
+                type === 'error' ? '#f8d7da' :
+                    type === 'warning' ? '#fff3cd' :
+                        '#e2e3e5';
+            statusDiv.style.color = type === 'success' ? '#155724' :
+                type === 'error' ? '#721c24' :
+                    type === 'warning' ? '#856404' :
+                        '#383d41';
+
+            // 3秒后自动隐藏（除了loading状态）
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // 重置 SAM 状态（切换视频时调用）
+        function resetSAMState() {
+            samMaskVisible = false;
+            samMaskUrl = null;
+            isSAMLoading = false;
+
+            const maskOverlay = document.getElementById('sam-mask-overlay');
+            if (maskOverlay) {
+                maskOverlay.style.display = 'none';
+                maskOverlay.src = '';
+            }
+
+            const toggleBtn = document.getElementById('sam-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.textContent = '🎭 显示 SAM Mask (M)';
+            }
+
+            const statusDiv = document.getElementById('sam-status');
+            if (statusDiv) {
+                statusDiv.style.display = 'none';
+            }
+        }
     </script>
 </body>
-</html>
 
+</html>
