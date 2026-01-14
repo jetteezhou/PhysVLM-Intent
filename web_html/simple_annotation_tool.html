@@ -914,6 +914,14 @@
         let currentVideoIndex = -1;
         let currentVideo = null;
         let annotations = {};
+
+        // 统一获取标注 Key 的逻辑，解决跨平台路径匹配问题
+        function getAnnotationKey(video) {
+            if (!video) return '';
+            // 优先使用后端返回的标准化 folder_key，否则回退到原始 folderPath
+            const folder = video.folder_key || folderPath;
+            return `${folder}|${video.name}`;
+        }
         let currentObjectIndex = -1;
         let currentObjectPoints = [];
         let currentObjectName = '';
@@ -1390,7 +1398,7 @@
                     // 查找第一个未标注且非无效的视频
                     for (let i = 0; i < videos.length; i++) {
                         const video = videos[i];
-                        const annotationKey = `${folderPath}|${video.name}`;
+                        const annotationKey = getAnnotationKey(video);
                         const annotation = annotations[annotationKey];
                         const isInvalid = annotation && annotation.is_invalid === true;
                         const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
@@ -1442,7 +1450,7 @@
 
             let annotatedCount = 0;
             videos.forEach(video => {
-                const annotationKey = `${folderPath}|${video.name}`;
+                const annotationKey = getAnnotationKey(video);
                 const annotation = annotations[annotationKey];
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
@@ -1478,7 +1486,7 @@
             if (videos.length > 0) {
                 let annotatedCount = 0;
                 videos.forEach(video => {
-                    const annotationKey = `${folderPath}|${video.name}`;
+                    const annotationKey = getAnnotationKey(video);
                     const annotation = annotations[annotationKey];
                     const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                     const isAnnotated = objectSpaceList.length > 0;
@@ -1519,7 +1527,7 @@
                     videoItem.classList.add('active');
                 }
 
-                const annotationKey = `${folderPath}|${video.name}`;
+                const annotationKey = getAnnotationKey(video);
                 const annotation = annotations[annotationKey];
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
@@ -3452,7 +3460,7 @@
             // 第一轮：从当前位置往后查找
             for (let i = startIndex; i < videos.length; i++) {
                 const video = videos[i];
-                const annotationKey = `${folderPath}|${video.name}`;
+                const annotationKey = getAnnotationKey(video);
                 const annotation = annotations[annotationKey];
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
@@ -3472,7 +3480,7 @@
             console.log('[跳转] 从当前位置往后没找到，从头开始查找');
             for (let i = 0; i < startIndex; i++) {
                 const video = videos[i];
-                const annotationKey = `${folderPath}|${video.name}`;
+                const annotationKey = getAnnotationKey(video);
                 const annotation = annotations[annotationKey];
                 const isInvalid = annotation && annotation.is_invalid === true;
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
@@ -3496,7 +3504,7 @@
         function jumpToUnannotated() {
             for (let i = 0; i < videos.length; i++) {
                 const video = videos[i];
-                const annotationKey = `${folderPath}|${video.name}`;
+                const annotationKey = getAnnotationKey(video);
                 const annotation = annotations[annotationKey];
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
