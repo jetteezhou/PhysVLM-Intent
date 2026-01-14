@@ -345,11 +345,12 @@ def process_annotation_file(annotation_path):
     """
     处理单个 annotations.json 文件 (多线程版)
     """
+    annotation_path_rel = os.path.relpath(annotation_path, PROJECT_ROOT)
     try:
         with open(annotation_path, 'r', encoding='utf-8') as f:
             annotations = json.load(f)
     except Exception as e:
-        print(f"  无法读取文件: {e}")
+        print(f"  无法读取文件 {annotation_path_rel}: {e}")
         return (0, 0, 0, 0)
 
     folder_path = os.path.dirname(annotation_path)
@@ -394,9 +395,9 @@ def process_annotation_file(annotation_path):
 
                 stats['total'] += 1
 
-                # if 'mask' in obj and obj['mask']:
-                #     stats['has_mask'] += 1
-                #     continue
+                if 'mask' in obj and obj['mask']:
+                    stats['has_mask'] += 1
+                    continue
 
                 objects_to_process.append(obj)
 
@@ -453,9 +454,9 @@ def process_annotation_file(annotation_path):
         try:
             with open(annotation_path, 'w', encoding='utf-8') as f:
                 json.dump(annotations, f, ensure_ascii=False, indent=2)
-            print(f"  已保存更新到文件")
+            print(f"  已保存更新到文件: {annotation_path_rel}")
         except Exception as e:
-            print(f"  保存文件失败: {e}")
+            print(f"  保存文件失败 {annotation_path_rel}: {e}")
 
     return (stats['total'], stats['has_mask'], stats['new'], stats['failed'])
 
@@ -465,11 +466,12 @@ def main():
     print("=" * 60)
     print(f"批量补充 mask 字段 (多线程并发: {MAX_WORKERS})")
     print("=" * 60)
-    print(f"数据目录: {DATA_DIR}")
+    data_dir_rel = os.path.relpath(DATA_DIR, PROJECT_ROOT)
+    print(f"数据目录: {data_dir_rel}")
     print()
 
     if not os.path.exists(DATA_DIR):
-        print(f"错误: 数据目录不存在: {DATA_DIR}")
+        print(f"错误: 数据目录不存在: {data_dir_rel}")
         return
 
     # 查找所有 annotations.json 文件

@@ -1637,12 +1637,7 @@
                 if (data.annotation) {
                     const annotationKey = `${folderPath}|${currentVideo.name}`;
                     annotations[annotationKey] = data.annotation;
-                    console.log('[标注交互] 从后端获取到标注数据并存入 Key:', annotationKey);
-                    
-                    // 核心修复：立即同步到当前内存变量
-                    savedObjects = JSON.parse(JSON.stringify(data.annotation.object_space || data.annotation.objects || []));
-                } else {
-                    savedObjects = [];
+                    console.log('[标注交互] 从后端获取到标注数据:', annotationKey);
                 }
 
                 // 设置视频播放器（优化：使用DOM缓存）
@@ -2061,7 +2056,7 @@
             // 自动请求 SAM3 分割 (带去抖动)
             autoRequestSAMSegment();
             
-            // // 自动保存（编辑模式下修改点后自动保存）
+            // 自动保存（编辑模式下修改点后自动保存）
             scheduleAutoSave();
         }
 
@@ -2375,29 +2370,12 @@
             if (taskTemplate && scene) {
                 try {
                     await saveAnnotations(true); 
-                    // 保存成功后，savedObjects已经从annotations重新加载，确保数据一致
-                    // saveAnnotations内部已经调用了renderExistingMasks()，所以这里不需要再次调用
                 } catch (error) {
                     console.error('新建前自动保存失败:', error);
-                    // 即使保存失败，对象已经在savedObjects中，UI会正确显示
-                    // 需要重新渲染mask，因为saveAnnotations可能已经调用了resetSAMState()
-                    renderSavedObjects();
-                    try {
-                        await renderExistingMasks();
-                    } catch (e) {
-                        console.warn('渲染 Mask 失败:', e);
-                    }
-                    updateObjectsList();
                 }
             } else {
-                // 如果信息不完整没法保存到文件，也要刷新 UI 让当前对象显示为"已添加"
+                // 如果信息不完整没法保存到文件，也要刷新 UI 让当前对象显示为“已添加”
                 renderSavedObjects();
-                // 确保已保存对象的mask被显示
-                try {
-                    await renderExistingMasks();
-                } catch (e) {
-                    console.warn('渲染 Mask 失败:', e);
-                }
                 updateObjectsList();
             }
 
@@ -2425,13 +2403,6 @@
             
             // 刷新列表和统计
             renderSavedObjects(); 
-            // 重新渲染所有已保存对象的mask（确保所有已保存对象的mask都被显示）
-            // 注意：即使saveAnnotations(true)已经调用了renderExistingMasks()，这里再次调用确保mask被正确显示
-            try {
-                await renderExistingMasks();
-            } catch (e) {
-                console.warn('渲染 Mask 失败:', e);
-            }
             updateObjectsList();
             scrollToObjectsListBottom();
         }
@@ -2479,29 +2450,12 @@
             if (taskTemplate && scene) {
                 try {
                     await saveAnnotations(true); 
-                    // 保存成功后，savedObjects已经从annotations重新加载，确保数据一致
-                    // saveAnnotations内部已经调用了renderExistingMasks()，所以这里不需要再次调用
                 } catch (error) {
                     console.error('新建前自动保存失败:', error);
-                    // 即使保存失败，对象已经在savedObjects中，UI会正确显示
-                    // 需要重新渲染mask，因为saveAnnotations可能已经调用了resetSAMState()
-                    renderSavedObjects();
-                    try {
-                        await renderExistingMasks();
-                    } catch (e) {
-                        console.warn('渲染 Mask 失败:', e);
-                    }
-                    updateObjectsList();
                 }
             } else {
                 // 如果信息不完整没法保存到文件，也要刷新 UI
                 renderSavedObjects();
-                // 确保已保存对象的mask被显示
-                try {
-                    await renderExistingMasks();
-                } catch (e) {
-                    console.warn('渲染 Mask 失败:', e);
-                }
                 updateObjectsList();
             }
 
@@ -2527,13 +2481,6 @@
             showStatus(`已添加放置区域: ${currentObjectName}，请在图像上点击标注点`, 'success');
             
             renderSavedObjects();
-            // 重新渲染所有已保存对象的mask（确保所有已保存对象的mask都被显示）
-            // 注意：即使saveAnnotations(true)已经调用了renderExistingMasks()，这里再次调用确保mask被正确显示
-            try {
-                await renderExistingMasks();
-            } catch (e) {
-                console.warn('渲染 Mask 失败:', e);
-            }
             updateObjectsList();
             scrollToObjectsListBottom();
         }
@@ -2711,10 +2658,7 @@
                 Math.round(p.x * 1000)   // x坐标 (0-1000)
             ]);
 
-            // 更新点数据，保留原有的mask（如果存在）
-            // 注意：mask在编辑模式下通过SAM3自动分割更新时会直接更新到savedObjects[editingObjectIndex].mask
             savedObjects[editingObjectIndex].points = points;
-            // mask会被保留，因为只更新了points，没有覆盖整个对象
 
             // 退出编辑模式
             editingObjectIndex = -1;
@@ -3350,10 +3294,18 @@
             annotations[annotationKey] = annotationData;
 
             // 打印保存标注的交互信息
-            console.log(`[标注交互] 准备发送保存请求`, {
+            console.log(`[标注交互] 保存标注到文件`, {
                 video: currentVideo.name,
-                annotationKey: annotationKey,
-                objects_count: allObjectsToSave.length
+                folder: folderPath,
+                task_template: taskTemplate,
+                scene: scene,
+                objects_count: allObjectsToSave.length,
+                objects: allObjectsToSave.map(obj => ({
+                    name: obj.name,
+                    type: obj.type || 'object',
+                    points_count: obj.points.length
+                })),
+                timestamp: new Date().toISOString()
             });
 
             try {
@@ -3368,22 +3320,15 @@
                     })
                 });
 
-                const result = await response.json();
-
                 if (!response.ok) {
-                    throw new Error(result.error || '保存失败');
+                    throw new Error('保存失败');
                 }
 
-                // --- 核心修复：保存成功后，从 annotations 中重新加载数据 ---
-                console.log('[标注交互] 保存成功，刷新本地状态');
-
-                // 1. 从 annotations 中重新加载 savedObjects（确保与文件内容一致）
+                // --- 核心修复：保存成功后，重新从 annotations 缓存中同步当前视频状态 ---
                 const updatedAnnotation = annotations[annotationKey];
-                if (updatedAnnotation && updatedAnnotation.object_space) {
-                    savedObjects = JSON.parse(JSON.stringify(updatedAnnotation.object_space));
-                    console.log(`[标注交互] 已从 annotations 重新加载 ${savedObjects.length} 个对象`);
-                } else {
-                    savedObjects = [];
+                if (updatedAnnotation) {
+                    // 1. 同步已保存对象列表（确保与文件内容一致）
+                    savedObjects = JSON.parse(JSON.stringify(updatedAnnotation.object_space || []));
                 }
 
                 // 2. 彻底清空所有临时/编辑状态变量
@@ -3413,43 +3358,37 @@
                 if (cancelEditingBtn) cancelEditingBtn.style.display = 'none';
 
                 // 5. 重新渲染
-                renderSavedObjects();
                 try {
+                    renderSavedObjects();
                     await renderExistingMasks();
-                } catch (e) { 
-                    console.warn('渲染 Mask 失败，但不影响保存状态:', e); 
+                } catch (renderError) {
+                    console.warn('渲染 Mask 失败，但不影响保存状态:', renderError);
                 }
                 
                 updateObjectsList();
                 updateStats();
 
-                // 6. 强制刷新列表变色（确保使用最新的annotations数据）
-                // 先立即刷新列表，确保annotations状态已更新
+                // 6. 无论如何都刷新列表
                 displayVideoList();
                 updateProgress();
 
                 if (!silent) {
-                    showStatus('保存成功', 'success');
-                    // 延迟跳转，确保displayVideoList已经完成并更新了UI状态
+                    showStatus('保存并刷新完成', 'success');
+                    // 如果是手动保存，尝试跳转
                     setTimeout(() => {
                         jumpToNextUnannotated();
-                    }, 100);
+                    }, 300);
                 }
             } catch (error) {
-                console.error('[标注交互] 保存异常:', error);
                 showStatus('保存失败: ' + error.message, 'error');
             }
         }
 
         // 跳转到下一个未标注的视频（从当前视频之后开始）
         function jumpToNextUnannotated() {
-            console.log('[跳转] 开始查找下一个未标注的视频，当前视频索引:', currentVideoIndex);
-            
             // 从当前视频的下一个开始查找
             const startIndex = currentVideoIndex >= 0 ? currentVideoIndex + 1 : 0;
-            console.log('[跳转] 从索引', startIndex, '开始查找');
 
-            // 第一轮：从当前位置往后查找
             for (let i = startIndex; i < videos.length; i++) {
                 const video = videos[i];
                 const annotationKey = `${folderPath}|${video.name}`;
@@ -3458,18 +3397,14 @@
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
 
-                console.log(`[跳转] 检查视频 ${i}: ${video.name}, 已标注: ${isAnnotated}, 无效: ${isInvalid}`);
-
                 // 跳过无效视频和已标注的视频
                 if (!isInvalid && !isAnnotated) {
-                    console.log(`[跳转] 找到未标注视频: ${video.name}，跳转到索引 ${i}`);
                     selectVideo(i);
                     return;
                 }
             }
 
-            // 第二轮：如果从当前位置往后没找到，从头开始查找（排除当前视频）
-            console.log('[跳转] 从当前位置往后没找到，从头开始查找');
+            // 如果从当前位置往后没找到，从头开始查找
             for (let i = 0; i < startIndex; i++) {
                 const video = videos[i];
                 const annotationKey = `${folderPath}|${video.name}`;
@@ -3478,17 +3413,13 @@
                 const objectSpaceList = annotation ? (annotation.object_space || annotation.objects || []) : [];
                 const isAnnotated = objectSpaceList.length > 0;
 
-                console.log(`[跳转] 检查视频 ${i}: ${video.name}, 已标注: ${isAnnotated}, 无效: ${isInvalid}`);
-
                 // 跳过无效视频和已标注的视频
                 if (!isInvalid && !isAnnotated) {
-                    console.log(`[跳转] 找到未标注视频: ${video.name}，跳转到索引 ${i}`);
                     selectVideo(i);
                     return;
                 }
             }
 
-            console.log('[跳转] 所有视频都已标注或标记为无效');
             showStatus('所有视频都已标注或标记为无效', 'success');
         }
 
@@ -3661,7 +3592,7 @@
                                 mask_bbox: data.mask.bbox
                             });
                             // mask 更新后自动保存
-                            // scheduleAutoSave();
+                            scheduleAutoSave();
                         }
                     } else {
                         showSAMStatus('⚠️ ' + (data.message || '未检测到分割结果'), 'warning');
