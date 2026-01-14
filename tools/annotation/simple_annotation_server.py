@@ -868,7 +868,7 @@ def get_video_info():
                     object_space_list = annotation.get(
                         'object_space', annotation.get('objects', []))
                     logger.info(
-                        f"[标注交互] 标注包含 {len(object_space_list)} 个对象/放置空间")
+                        f"[标注交互] 标注包含 {len(object_space_list)} 个对象/放置区域")
                 else:
                     logger.info(f"[标注交互] 未找到该视频的标注数据")
 
@@ -1296,7 +1296,7 @@ def sam_segment():
         logger.info(f"[SAM3分割] 像素坐标: {pixel_points}")
 
         # 生成输出路径
-        mask_output_filename = f"{video_basename}_sam_mask.jpg"
+        mask_output_filename = f"{video_basename}_sam_mask.png"
         mask_output_path = os.path.join(TEMP_DIR, mask_output_filename)
 
         # 使用 test.py 中的 SAM3 工具函数进行分割
@@ -1409,7 +1409,7 @@ def load_annotations():
         for key, ann in annotations_dict.items():
             # 兼容旧的objects字段和新的object_space字段
             object_space_list = ann.get('object_space', ann.get('objects', []))
-            logger.info(f"  - {key}: {len(object_space_list)} 个对象/放置空间")
+            logger.info(f"  - {key}: {len(object_space_list)} 个对象/放置区域")
 
         return jsonify({
             'success': True,
@@ -1454,11 +1454,11 @@ def save_annotations():
             logger.info(f"    场景: {ann.get('scene', 'N/A')}")
             # 兼容旧的objects字段和新的object_space字段
             object_space_list = ann.get('object_space', ann.get('objects', []))
-            logger.info(f"    对象/放置空间数量: {len(object_space_list)}")
+            logger.info(f"    对象/放置区域数量: {len(object_space_list)}")
 
             for idx, obj in enumerate(object_space_list):
                 obj_type = obj.get('type', 'object')
-                type_label = '放置空间' if obj_type == 'space' else '对象'
+                type_label = '放置区域' if obj_type == 'space' else '对象'
                 logger.info(f"      {type_label} {idx + 1}:")
                 logger.info(f"        名称: {obj.get('name', 'N/A')}")
                 logger.info(f"        类型: {obj_type}")

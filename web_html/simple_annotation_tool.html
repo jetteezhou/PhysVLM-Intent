@@ -785,11 +785,11 @@
                     <div class="image-container" id="image-container">
                         <img id="last-frame-image" src="" alt="最后一帧" />
                         <img id="sam-mask-overlay" src="" alt="SAM3 Mask"
-                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; opacity: 0.7;" />
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; opacity: 1.0;" />
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="addObject()">➕ 添加目标对象 (A)</button>
-                        <button class="btn btn-primary" onclick="addPlacementSpace()">📍 添加放置空间 (W)</button>
+                        <button class="btn btn-primary" onclick="addPlacementSpace()">📍 添加放置区域 (W)</button>
                         <button class="btn btn-warning" onclick="clearCurrentObject()">🗑️ 清除当前对象 (C)</button>
                         <button class="btn btn-success" id="save-editing-btn" onclick="saveEditingObject()"
                             style="display: none;">💾 保存编辑</button>
@@ -1022,20 +1022,32 @@
                             img.onload = () => {
                                 ctx.save();
                                 
-                                // 优化：使用 Canvas 合成模式替代像素循环，大幅提升性能
+                                // 创建临时画布处理像素
                                 const tempCanvas = document.createElement('canvas');
                                 tempCanvas.width = width;
                                 tempCanvas.height = height;
                                 const tempCtx = tempCanvas.getContext('2d');
 
-                                // 1. 绘制原始 Mask (通常是黑白或带 Alpha 的)
+                                // 1. 绘制原始 Mask
                                 tempCtx.drawImage(img, 0, 0, width, height);
 
-                                // 2. 使用 'source-in' 模式染色
-                                // 此模式下，新绘制的内容只保留在原有非透明像素上
-                                tempCtx.globalCompositeOperation = 'source-in';
-                                tempCtx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.47)`; // 120/255 ≈ 0.47
-                                tempCtx.fillRect(0, 0, width, height);
+                                // 2. 获取像素数据并根据亮度设置 Alpha
+                                // 注意：SAM3 返回的通常是 1-channel 灰度图，浏览器会将其加载为 RGB 三通道相同的图像
+                                const imageData = tempCtx.getImageData(0, 0, width, height);
+                                const data = imageData.data;
+                                for (let i = 0; i < data.length; i += 4) {
+                                    const brightness = data[i]; // 取 R 通道亮度
+                                    // 只有亮度大于 128 的像素才被认为是 mask 区域
+                                    if (brightness > 128) {
+                                        data[i] = color[0];
+                                        data[i+1] = color[1];
+                                        data[i+2] = color[2];
+                                        data[i+3] = 120; // 设置透明度 (约 0.47)
+                                    } else {
+                                        data[i+3] = 0; // 其他区域完全透明
+                                    }
+                                }
+                                tempCtx.putImageData(imageData, 0, 0);
 
                                 // 3. 将染色后的 Mask 绘制到主画布
                                 ctx.globalCompositeOperation = 'source-over';
@@ -1169,7 +1181,7 @@
                 return;
             }
 
-            // W 添加放置空间
+            // W 添加放置区域
             if (e.key === 'w' || e.key === 'W') {
                 e.preventDefault();
                 addPlacementSpace();
@@ -2381,7 +2393,7 @@
             scrollToObjectsListBottom();
         }
 
-        // 添加放置空间
+        // 添加放置区域
         function addPlacementSpace() {
             if (!currentVideo) {
                 showStatus('请先选择视频', 'error');
@@ -2418,8 +2430,8 @@
                 });
             }
 
-            // 弹出输入框让用户输入放置空间类别
-            const category = prompt('请输入放置空间类别（例如：黑色笔的右边等）：');
+            // 弹出输入框让用户输入放置区域类别
+            const category = prompt('请输入放置区域类别（例如：黑色笔的右边等）：');
             if (category === null || category.trim() === '') {
                 return; // 用户取消或输入为空
             }
@@ -2428,12 +2440,12 @@
             currentObjectIndex = savedObjects.length + editingObjects.length;
             currentObjectPoints = [];
             currentObjectName = category.trim();
-            currentObjectType = 'space'; // 设置为放置空间类型
+            currentObjectType = 'space'; // 设置为放置区域类型
             selectedPointIndex = -1;
 
             saveHistory();
 
-            console.log(`[标注交互] 添加放置空间`, {
+            console.log(`[标注交互] 添加放置区域`, {
                 video: currentVideo.name,
                 object_index: currentObjectIndex,
                 category: currentObjectName,
@@ -2443,7 +2455,7 @@
                 timestamp: new Date().toISOString()
             });
 
-            showStatus(`已添加放置空间: ${currentObjectName}，请在图像上点击标注点`, 'success');
+            showStatus(`已添加放置区域: ${currentObjectName}，请在图像上点击标注点`, 'success');
             updateObjectsList();
             scrollToObjectsListBottom();
         }
@@ -2738,7 +2750,7 @@
                 const typeSpan = document.createElement('span');
                 typeSpan.style.fontSize = '0.7em';
                 typeSpan.style.color = objType === 'space' ? '#667eea' : '#6c757d';
-                typeSpan.textContent = objType === 'space' ? '[放置空间]' : '[对象]';
+                typeSpan.textContent = objType === 'space' ? '[放置区域]' : '[对象]';
                 nameDiv.appendChild(typeSpan);
                 
                 // 创建status span
@@ -2810,7 +2822,7 @@
                 const typeSpan = document.createElement('span');
                 typeSpan.style.fontSize = '0.7em';
                 typeSpan.style.color = objType === 'space' ? '#667eea' : '#6c757d';
-                typeSpan.textContent = objType === 'space' ? '[放置空间]' : '[对象]';
+                typeSpan.textContent = objType === 'space' ? '[放置区域]' : '[对象]';
                 nameDiv.appendChild(typeSpan);
                 
                 const statusSpan = document.createElement('span');
@@ -2847,7 +2859,7 @@
                 const typeSpan = document.createElement('span');
                 typeSpan.style.fontSize = '0.7em';
                 typeSpan.style.color = currentObjectType === 'space' ? '#667eea' : '#6c757d';
-                typeSpan.textContent = currentObjectType === 'space' ? '[放置空间]' : '[对象]';
+                typeSpan.textContent = currentObjectType === 'space' ? '[放置区域]' : '[对象]';
                 nameDiv.appendChild(typeSpan);
                 
                 const statusSpan = document.createElement('span');
@@ -3215,7 +3227,7 @@
                 // 如果之前标记为无效，现在要保存正常标注，需要清除无效标记
                 // 继续执行保存流程
             } else if (allObjectsToSave.length === 0) {
-                showStatus('请先添加至少一个目标对象或放置空间', 'error');
+                showStatus('请先添加至少一个目标对象或放置区域', 'error');
                 return;
             }
 
@@ -3459,6 +3471,18 @@
                     return;
                 }
 
+                // 检查当前对象类型，如果是放置区域，则不进行分割
+                if (editingObjectIndex >= 0) {
+                    const editingObj = savedObjects[editingObjectIndex];
+                    if (editingObj && editingObj.type === 'space') {
+                        console.log('[SAM3] 当前正在编辑放置区域，跳过自动分割');
+                        return;
+                    }
+                } else if (currentObjectType === 'space') {
+                    console.log('[SAM3] 当前正在标注放置区域，跳过自动分割');
+                    return;
+                }
+
                 // 收集点：优先使用编辑模式下的点，否则使用当前创建对象的点
                 let allPoints = [];
                 
@@ -3545,6 +3569,18 @@
         async function requestSAMSegment() {
             if (!currentVideo) {
                 showStatus('请先选择视频', 'error');
+                return;
+            }
+
+            // 检查当前对象类型，如果是放置区域，则不进行分割
+            if (editingObjectIndex >= 0) {
+                const editingObj = savedObjects[editingObjectIndex];
+                if (editingObj && editingObj.type === 'space') {
+                    showStatus('放置区域无需分割', 'warning');
+                    return;
+                }
+            } else if (currentObjectType === 'space') {
+                showStatus('放置区域无需分割', 'warning');
                 return;
             }
 

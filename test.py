@@ -205,45 +205,38 @@ def visualize_results(image, result, points=None, point_labels=None, boxes=None,
         single_mask: 是否只显示第一个mask（与标注点最相关的那个），默认False显示所有
     """
     height, width = image.shape[:2]
-    vis_image = image.copy()
+    
+    # 根据输出文件格式决定是否使用透明背景
+    is_png = output_path and output_path.lower().endswith('.png')
+    
+    if is_png:
+        # 创建带有 Alpha 通道的透明图像
+        vis_image = np.zeros((height, width, 4), dtype=np.uint8)
+        # 注意：OpenCV 的 BGR 顺序，Alpha 在第 4 位
+    else:
+        vis_image = image.copy()
 
     # 绘制点
     if points:
         for idx, point in enumerate(points):
-            if point_labels and idx < len(point_labels):
-                if point_labels[idx] == 1:
-                    cv2.circle(vis_image, tuple(point), 10,
-                               (0, 255, 0), -1)  # 绿色，正向点
-                else:
-                    cv2.circle(vis_image, tuple(point), 10,
-                               (0, 0, 255), -1)  # 红色，负向点
-            else:
-                cv2.circle(vis_image, tuple(point),
-                           10, (0, 255, 0), -1)  # 默认绿色
+            color = (0, 255, 0, 255) if not point_labels or (idx < len(point_labels) and point_labels[idx] == 1) else (0, 0, 255, 255)
+            cv2.circle(vis_image, tuple(point), 10, color, -1)
 
-    # 绘制边界框（输入的提示框）
+    # 绘制边界框
     if boxes:
         for idx, box in enumerate(boxes):
             x1, y1, x2, y2 = box
-            if box_labels and idx < len(box_labels):
-                if box_labels[idx] == 1:
-                    cv2.rectangle(vis_image, (int(x1), int(y1)),
-                                  (int(x2), int(y2)), (0, 255, 0), 2)  # 绿色，正向框
-                else:
-                    cv2.rectangle(vis_image, (int(x1), int(y1)),
-                                  (int(x2), int(y2)), (0, 0, 255), 2)  # 红色，负向框
-            else:
-                cv2.rectangle(vis_image, (int(x1), int(y1)),
-                              (int(x2), int(y2)), (0, 255, 0), 2)  # 默认绿色
+            color = (0, 255, 0, 255) if not box_labels or (idx < len(box_labels) and box_labels[idx] == 1) else (0, 0, 255, 255)
+            cv2.rectangle(vis_image, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
 
     # 处理分割结果
     colors = [
-        (255, 0, 0),    # 蓝色
-        (0, 255, 0),    # 绿色
-        (0, 0, 255),    # 红色
-        (255, 255, 0),  # 青色
-        (255, 0, 255),  # 洋红色
-        (0, 255, 255),  # 黄色
+        (255, 0, 0, 255),    # 蓝色
+        (0, 255, 0, 255),    # 绿色
+        (0, 0, 255, 255),    # 红色
+        (255, 255, 0, 255),  # 青色
+        (255, 0, 255, 255),  # 洋红色
+        (0, 255, 255, 255),  # 黄色
     ]
 
     results_to_process = result.get('results', [])
@@ -294,24 +287,25 @@ def visualize_results(image, result, points=None, point_labels=None, boxes=None,
                         mask = new_mask
                         print(f"  ✓ 标注点在物体上，保留 {len(valid_labels)} 个包含标注点的区域")
                         # 标注正确，用蓝色显示 mask
-                        mask_color = (255, 0, 0)  # 蓝色表示正确
+                        mask_color = (255, 0, 0, 255) if is_png else (255, 0, 0)  # 蓝色表示正确
                     else:
                         # 标注点不在任何 mask 区域内 - 显示 SAM3 返回的 mask，但用红色
                         print(f"  ⚠️ 警告: 标注点不在SAM检测的物体区域内！")
                         print(f"  ⚠️ SAM3返回的mask在其他位置，用红色显示对比")
                         # 保留原始 mask，但会用红色显示
                         # 在图像上添加警告文字
+                        warn_color = (0, 0, 255, 255) if is_png else (0, 0, 255)
                         cv2.putText(vis_image, "WARNING: SAM3 detected different object!",
-                                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, warn_color, 2)
                         cv2.putText(vis_image, "Red=SAM3 result, Green=Your click",
-                                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, warn_color, 2)
                         # 标注点用绿色大圈标记
                         for point in points:
                             px, py = int(point[0]), int(point[1])
-                            cv2.circle(vis_image, (px, py), 25,
-                                       (0, 255, 0), 3)  # 绿色大圈=你的标注
+                            click_color = (0, 255, 0, 255) if is_png else (0, 255, 0)
+                            cv2.circle(vis_image, (px, py), 25, click_color, 3)  # 绿色大圈=你的标注
                         # 用红色显示 SAM3 的 mask
-                        mask_color = (0, 0, 255)  # 红色表示错位
+                        mask_color = (0, 0, 255, 255) if is_png else (0, 0, 255)  # 红色表示错位
                 else:
                     # 不是 single_mask 模式，使用默认颜色
                     mask_color = colors[idx % len(colors)]
@@ -321,26 +315,39 @@ def visualize_results(image, result, points=None, point_labels=None, boxes=None,
                 print(
                     f"  [DEBUG] mask 非零像素数: {mask_pixels}, mask颜色: {mask_color}")
 
-                # 创建彩色 mask（半透明）
-                mask_colored = np.zeros_like(vis_image)
-                mask_colored[mask > 128] = mask_color
-
-                print(
-                    f"  [DEBUG] mask_colored 非零像素: {np.sum(np.any(mask_colored > 0, axis=2))}")
-
-                # 叠加 mask（半透明）
-                vis_image = cv2.addWeighted(
-                    vis_image, 0.7, mask_colored, 0.3, 0)
+                # 创建彩色 mask
+                if is_png:
+                    # 对于 PNG，直接在 vis_image 的 mask 区域填充颜色和 alpha
+                    mask_indices = mask > 128
+                    # 只有在 mask 区域才设置颜色和透明度
+                    # mask_color 已经是 (B, G, R, 255)
+                    # 我们希望 mask 区域有 0.3 的透明度 (约 77/255)
+                    c = list(mask_color)
+                    c[3] = 120 # 约 0.47 透明度，与前端保持一致
+                    vis_image[mask_indices] = c
+                else:
+                    # 对于 JPG，使用叠加方式
+                    mask_colored = np.zeros_like(vis_image)
+                    mask_colored[mask > 128] = mask_color[:3]
+                    vis_image = cv2.addWeighted(
+                        vis_image, 0.7, mask_colored, 0.3, 0)
 
                 # 绘制结果边界框
                 if bbox:
                     x1, y1, x2, y2 = bbox
-                    cv2.rectangle(vis_image, (x1, y1), (x2, y2), mask_color, 2)
+                    # 确保 bbox 颜色也是 4 通道的
+                    b_color = mask_color if is_png else mask_color[:3]
+                    cv2.rectangle(vis_image, (x1, y1), (x2, y2), b_color, 2)
 
                     # 添加分数标签
                     label = f"Score: {score:.2f}"
-                    cv2.putText(vis_image, label, (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, mask_color, 2)
+                    # 文本背景
+                    if is_png:
+                        cv2.putText(vis_image, label, (x1, y1 - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, b_color, 2)
+                    else:
+                        cv2.putText(vis_image, label, (x1, y1 - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, b_color, 2)
 
                 print(f"结果 {idx + 1}: score={score:.3f}, bbox={bbox}")
             else:
@@ -354,8 +361,19 @@ def visualize_results(image, result, points=None, point_labels=None, boxes=None,
 
     # 同时保存原图和 mask 的对比（只在非 single_mask 模式下）
     if result.get('results') and not single_mask:
-        comparison = np.hstack([image, vis_image])
-        comparison_path = output_path.replace('.jpg', '_comparison.jpg')
+        # 处理 4 通道图像以便与原图合并
+        vis_to_show = vis_image
+        if vis_image.shape[2] == 4:
+            # 如果是透明背景，将其叠加到原图上进行对比
+            vis_to_show = image.copy()
+            mask_indices = vis_image[:, :, 3] > 0
+            # 使用 alpha 混合
+            alpha = vis_image[mask_indices, 3:4] / 255.0
+            vis_to_show[mask_indices] = (vis_image[mask_indices, :3] * alpha + 
+                                         vis_to_show[mask_indices] * (1 - alpha)).astype(np.uint8)
+        
+        comparison = np.hstack([image, vis_to_show])
+        comparison_path = output_path.replace('.png', '_comparison.png').replace('.jpg', '_comparison.jpg')
         cv2.imwrite(comparison_path, comparison)
         print(f"对比图已保存到: {comparison_path}")
 
