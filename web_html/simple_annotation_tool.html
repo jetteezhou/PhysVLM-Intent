@@ -2941,6 +2941,9 @@
                 currentObjectPoints = [];
                 currentObjectName = '';
                 currentObjectType = 'object'; // 重置对象类型
+                savedObjects = []; // 确保清空已保存对象列表
+                // 重置 SAM mask 状态
+                resetSAMState();
                 updateObjectsList();
                 showStatus('此视频已标记为无效视频', 'error');
                 return;
@@ -2956,6 +2959,9 @@
                 currentObjectName = '';
                 currentObjectType = 'object'; // 重置对象类型
                 savedObjects = []; // 确保清空已保存对象列表
+
+                // 重置 SAM mask 状态
+                resetSAMState();
 
                 // 如果是未标注的视频，保留全局任务模板和场景的值
                 // 如果全局值存在，则使用全局值；否则清空
@@ -3026,6 +3032,9 @@
 
             // 为每个已保存的对象创建标记点
             renderSavedObjects();
+
+            // 渲染已存在的 Mask（场景分割框）
+            renderExistingMasks();
 
             // 显示对象列表
             updateObjectsList();
