@@ -2333,6 +2333,11 @@
                 return;
             }
 
+            // 如果正在编辑模式，先保存并退出编辑模式
+            if (editingObjectIndex >= 0) {
+                saveEditingObject();
+            }
+
             // 如果当前有正在编辑的对象且有标注点，先保存到 editingObjects
             if (currentObjectIndex !== -1 && currentObjectPoints.length > 0) {
                 const points = currentObjectPoints.map(p => [
@@ -2398,6 +2403,11 @@
             if (!currentVideo) {
                 showStatus('请先选择视频', 'error');
                 return;
+            }
+
+            // 如果正在编辑模式，先保存并退出编辑模式
+            if (editingObjectIndex >= 0) {
+                saveEditingObject();
             }
 
             // 如果当前有正在编辑的对象且有标注点，先保存到 editingObjects
@@ -3190,19 +3200,17 @@
                 return;
             }
 
+            // 如果正在编辑模式，先保存并退出编辑模式
+            if (editingObjectIndex >= 0) {
+                saveEditingObject();
+            }
+
             // 检查是否是无效视频
             const annotationKey = `${folderPath}|${currentVideo.name}`;
             const existingAnnotation = annotations[annotationKey];
 
             // 收集所有要保存的对象（包括已保存的、正在编辑的和当前正在编辑的对象）
-            // 如果正在编辑对象，需要先更新 savedObjects 中的点数据
-            if (editingObjectIndex >= 0 && editingObjectPoints.length > 0) {
-                const points = editingObjectPoints.map(p => [
-                    Math.round(p.y * 1000),  // y坐标 (0-1000)
-                    Math.round(p.x * 1000)   // x坐标 (0-1000)
-                ]);
-                savedObjects[editingObjectIndex].points = points;
-            }
+            // 注意：如果正在编辑对象，saveEditingObject() 已经更新了 savedObjects 中的点数据
             
             const allObjectsToSave = [...savedObjects, ...editingObjects];
 
