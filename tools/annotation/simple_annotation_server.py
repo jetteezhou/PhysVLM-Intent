@@ -23,8 +23,8 @@ from threading import Lock
 from collections import OrderedDict
 
 # 获取项目根目录路径
-PROJECT_ROOT = os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, PROJECT_ROOT)
 
 # 导入ASR相关模块
@@ -547,139 +547,91 @@ _path_resolution_cache = {}
 def resolve_folder_path(annotation_folder: str, current_folder_path: str = None) -> str:
     """
     解析标注文件中的文件夹路径，支持绝对路径和相对路径的回退
-    使用缓存优化性能
-
-    策略：
-    1. 先尝试使用绝对路径
-    2. 如果绝对路径不存在，从绝对路径中提取相对路径部分
-    3. 在项目 data 目录下查找相对路径
-    4. 支持 Windows 和 Mac/Linux 的路径自动转换
+    深度优化 Windows 兼容性
     """
     if not annotation_folder:
         return current_folder_path or ''
 
+    # 1. 彻底标准化输入路径
+    # 统一使用正斜杠处理，去掉首尾空格，处理可能的前缀
+    clean_path = annotation_folder.replace('\\', '/').strip()
+    if clean_path.startswith('./'):
+        clean_path = clean_path[2:]
+
+    # 使用 normpath 得到当前系统的标准路径格式
+    normalized_path = os.path.normpath(clean_path)
+
     # 使用缓存
-    cache_key = f"{annotation_folder}|{current_folder_path}"
+    cache_key = f"{normalized_path}|{current_folder_path}"
     with _cache_lock:
         if cache_key in _path_resolution_cache:
             return _path_resolution_cache[cache_key]
 
-    # 标准化路径分隔符（统一使用当前系统的分隔符）
-    normalized_path = annotation_folder.replace(
-        '\\', os.sep).replace('/', os.sep)
-    # 使用 normpath 标准化路径（处理 .. 和 . 等，但不改变相对/绝对路径的性质）
-    normalized_path = os.path.normpath(normalized_path)
-
     def _resolve():
-        # 检测是否为 Windows 绝对路径（以驱动器字母开头，如 C:\ 或 C:/）
-        is_windows_abs = False
-        if len(normalized_path) >= 2 and normalized_path[1] == ':':
-            is_windows_abs = True
+        data_dir = os.path.join(PROJECT_ROOT, 'data')
+        candidates = []
 
-        # 检测是否为 Unix/Mac 绝对路径
-        is_unix_abs = os.path.isabs(normalized_path)
+        # A. 优先检查相对于项目 data 目录 (最常见的相对路径情况)
+        path_without_data = normalized_path
+        if normalized_path.lower().startswith('data' + os.sep):
+            path_without_data = normalized_path[5:]
+        elif normalized_path.lower().startswith('data/'):
+            path_without_data = normalized_path[5:]
+        elif normalized_path.lower() == 'data':
+            path_without_data = ''
 
-        # 在 Windows 上，os.path.isabs() 对于相对路径返回 False
-        # 对于 Windows 绝对路径（如 C:\path），os.path.isabs() 也返回 True
-        # 所以我们需要单独判断 Windows 绝对路径
+        candidates.append(os.path.join(data_dir, path_without_data))
+        candidates.append(os.path.join(data_dir, normalized_path))
 
-        # 策略1: 先尝试直接使用绝对路径
-        if is_unix_abs or is_windows_abs:
-            if os.path.exists(normalized_path):
-                logger.debug(f"[路径解析] 使用绝对路径: {normalized_path}")
-                return normalized_path
-            logger.debug(f"[路径解析] 绝对路径不存在: {normalized_path}")
+        # B. 检查相对于项目根目录
+        candidates.append(os.path.join(PROJECT_ROOT, normalized_path))
 
-        # 策略2: 如果是绝对路径但不存在，尝试提取相对路径部分
-        if is_unix_abs or is_windows_abs:
-            # 从绝对路径中提取最后几级目录作为相对路径
-            # normalized_path 已经标准化过了，直接使用即可
-            path_parts = [
-                part for part in normalized_path.split(os.sep) if part]
+        # C. 处理看起来像绝对路径的情况 (包括以 / 或 \ 开头的路径，以及 Windows 盘符)
+        is_windows_abs = len(
+            normalized_path) >= 2 and normalized_path[1] == ':'
+        is_abs = os.path.isabs(normalized_path) or is_windows_abs
 
-            # 尝试从后往前提取路径部分，最多提取5级目录
-            for i in range(1, min(len(path_parts) + 1, 6)):
-                relative_parts = path_parts[-i:]
-                relative_path = os.path.join(*relative_parts)
+        if is_abs:
+            candidates.append(normalized_path)
 
-                # 在项目 data 目录下查找
-                data_dir = os.path.join(PROJECT_ROOT, 'data')
-                candidate_path = os.path.join(data_dir, relative_path)
+            # 策略：如果绝对路径不存在，尝试提取最后几级目录
+            parts = [p for p in normalized_path.split(os.sep) if p]
+            for i in range(1, min(len(parts) + 1, 6)):
+                rel = os.path.join(*parts[-i:])
+                candidates.append(os.path.join(data_dir, rel))
 
-                if os.path.exists(candidate_path):
+        # D. 如果提供了上下文，检查其相关路径
+        if current_folder_path:
+            ctx_clean = current_folder_path.replace('\\', '/').strip()
+            ctx_norm = os.path.normpath(ctx_clean)
+            if os.path.exists(ctx_norm):
+                base = ctx_norm if os.path.isdir(
+                    ctx_norm) else os.path.dirname(ctx_norm)
+                candidates.append(os.path.join(base, normalized_path))
+                candidates.append(os.path.join(
+                    os.path.dirname(base), normalized_path))
+
+        # E. 最后：相对于当前工作目录
+        candidates.append(os.path.abspath(normalized_path))
+
+        # 依次验证候选路径
+        tried = []
+        for cand in candidates:
+            try:
+                abs_cand = os.path.abspath(cand)
+                if abs_cand in tried:
+                    continue
+                tried.append(abs_cand)
+
+                if os.path.exists(abs_cand):
                     logger.info(
-                        f"[路径解析] 找到相对路径: {candidate_path} (从 {normalized_path} 提取，相对路径: {relative_path})")
-                    return candidate_path
+                        f"[路径解析] 成功: {annotation_folder} -> {abs_cand}")
+                    return abs_cand
+            except:
+                continue
 
-                # 也在当前文件夹的父目录中查找
-                if current_folder_path:
-                    parent_dir = os.path.dirname(current_folder_path)
-                    candidate_path = os.path.join(parent_dir, relative_path)
-                    if os.path.exists(candidate_path):
-                        logger.info(
-                            f"[路径解析] 在当前文件夹父目录找到: {candidate_path} (相对路径: {relative_path})")
-                        return candidate_path
-
-            logger.warning(f"[路径解析] 无法解析路径: {normalized_path}，使用原始路径")
-            return normalized_path
-
-        # 策略3: 如果已经是相对路径，尝试在 data 目录下查找
-        # 在 Windows 上，相对路径的判断：不是绝对路径且不是 Windows 绝对路径
-        is_relative_path = not is_unix_abs and not is_windows_abs
-
-        if is_relative_path:
-            data_dir = os.path.join(PROJECT_ROOT, 'data')
-
-            # 如果路径以 data/ 或 data\ 开头，去掉前缀
-            path_to_check = normalized_path
-            # Windows 上路径分隔符可能是 \，需要同时检查两种格式
-            if path_to_check.lower().startswith('data' + os.sep) or path_to_check.lower().startswith('data/'):
-                # 去掉 data/ 或 data\ 前缀
-                if path_to_check.lower().startswith('data' + os.sep):
-                    # len('data') + len(os.sep)
-                    path_to_check = path_to_check[5:]
-                elif path_to_check.lower().startswith('data/'):
-                    path_to_check = path_to_check[5:]  # len('data/')
-
-            candidate_path = os.path.join(data_dir, path_to_check)
-            # 标准化路径（处理 .. 和 . 等）
-            candidate_path = os.path.normpath(candidate_path)
-            if os.path.exists(candidate_path):
-                logger.info(f"[路径解析] 在 data 目录找到相对路径: {candidate_path}")
-                return candidate_path
-
-            # 也在当前文件夹的父目录中查找
-            if current_folder_path:
-                parent_dir = os.path.dirname(current_folder_path)
-                candidate_path = os.path.join(parent_dir, normalized_path)
-                candidate_path = os.path.normpath(candidate_path)
-                if os.path.exists(candidate_path):
-                    logger.info(f"[路径解析] 在当前文件夹父目录找到相对路径: {candidate_path}")
-                    return candidate_path
-
-        # 策略4: 如果都找不到，尝试直接使用（可能是相对于当前工作目录）
-        if is_relative_path:
-            # 尝试直接使用 normalized_path（可能是相对于当前工作目录）
-            candidate_path = os.path.normpath(normalized_path)
-            if os.path.exists(candidate_path):
-                logger.info(f"[路径解析] 使用直接路径: {candidate_path}")
-                return candidate_path
-
-            # 最后尝试在项目 data 目录下查找
-            data_dir = os.path.join(PROJECT_ROOT, 'data')
-            candidate_path = os.path.join(data_dir, normalized_path)
-            candidate_path = os.path.normpath(candidate_path)
-            if os.path.exists(candidate_path):
-                logger.info(f"[路径解析] 在项目data目录找到路径: {candidate_path}")
-                return candidate_path
-
-        # 最后尝试：直接检查 normalized_path 是否存在
-        normalized_path_abs = os.path.normpath(normalized_path)
-        if os.path.exists(normalized_path_abs):
-            logger.info(f"[路径解析] 使用标准化路径: {normalized_path_abs}")
-            return normalized_path_abs
-
-        logger.warning(f"[路径解析] 所有策略都失败，返回原始路径: {normalized_path}")
+        logger.warning(
+            f"[路径解析] 无法解析路径: {annotation_folder}，尝试过: {tried[:3]}...")
         return normalized_path
 
     resolved_path = _resolve()
