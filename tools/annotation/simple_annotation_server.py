@@ -568,71 +568,54 @@ def resolve_folder_path(annotation_folder: str, current_folder_path: str = None)
             return _path_resolution_cache[cache_key]
 
     def _resolve():
-        data_dir = os.path.join(PROJECT_ROOT, 'data')
+        data_dir = os.path.abspath(os.path.join(PROJECT_ROOT, 'data'))
         candidates = []
 
-        # A. 优先检查相对于项目 data 目录 (最常见的相对路径情况)
-        path_without_data = normalized_path
-        if normalized_path.lower().startswith('data' + os.sep):
-            path_without_data = normalized_path[5:]
-        elif normalized_path.lower().startswith('data/'):
-            path_without_data = normalized_path[5:]
-        elif normalized_path.lower() == 'data':
-            path_without_data = ''
+        # A. 提取相对路径部分（如果路径中包含 'data'）
+        parts = normalized_path.split(os.sep)
+        if 'data' in parts:
+            idx = parts.index('data')
+            rel = os.path.join(*parts[idx+1:])
+            candidates.append(os.path.join(data_dir, rel))
 
-        candidates.append(os.path.join(data_dir, path_without_data))
+        # B. 直接作为相对路径在 data 下尝试
         candidates.append(os.path.join(data_dir, normalized_path))
 
-        # B. 检查相对于项目根目录
-        candidates.append(os.path.join(PROJECT_ROOT, normalized_path))
-
-        # C. 处理看起来像绝对路径的情况 (包括以 / 或 \ 开头的路径，以及 Windows 盘符)
-        is_windows_abs = len(
-            normalized_path) >= 2 and normalized_path[1] == ':'
-        is_abs = os.path.isabs(normalized_path) or is_windows_abs
-
+        # C. 绝对路径尝试
+        is_abs = os.path.isabs(normalized_path) or (
+            len(normalized_path) >= 2 and normalized_path[1] == ':')
         if is_abs:
             candidates.append(normalized_path)
+            # 跨机器复制路径退化策略：取最后几级
+            for i in range(1, min(len(parts) + 1, 4)):
+                candidates.append(os.path.join(data_dir, *parts[-i:]))
 
-            # 策略：如果绝对路径不存在，尝试提取最后几级目录
-            parts = [p for p in normalized_path.split(os.sep) if p]
-            for i in range(1, min(len(parts) + 1, 6)):
-                rel = os.path.join(*parts[-i:])
-                candidates.append(os.path.join(data_dir, rel))
-
-        # D. 如果提供了上下文，检查其相关路径
+        # D. 相对于上下文尝试
         if current_folder_path:
-            ctx_clean = current_folder_path.replace('\\', '/').strip()
-            ctx_norm = os.path.normpath(ctx_clean)
-            if os.path.exists(ctx_norm):
-                base = ctx_norm if os.path.isdir(
-                    ctx_norm) else os.path.dirname(ctx_norm)
-                candidates.append(os.path.join(base, normalized_path))
-                candidates.append(os.path.join(
-                    os.path.dirname(base), normalized_path))
+            ctx_abs = os.path.abspath(current_folder_path)
+            base = ctx_abs if os.path.isdir(
+                ctx_abs) else os.path.dirname(ctx_abs)
+            candidates.append(os.path.join(base, normalized_path))
 
-        # E. 最后：相对于当前工作目录
-        candidates.append(os.path.abspath(normalized_path))
-
-        # 依次验证候选路径
+        # 依次探测
         tried = []
         for cand in candidates:
             try:
-                abs_cand = os.path.abspath(cand)
+                abs_cand = os.path.abspath(os.path.normpath(cand))
                 if abs_cand in tried:
                     continue
                 tried.append(abs_cand)
-
                 if os.path.exists(abs_cand):
                     logger.info(
-                        f"[路径解析] 成功: {annotation_folder} -> {abs_cand}")
+                        f"[路径解析] 命中: {annotation_folder} -> {abs_cand}")
                     return abs_cand
             except:
                 continue
 
-        logger.warning(
-            f"[路径解析] 无法解析路径: {annotation_folder}，尝试过: {tried[:3]}...")
-        return normalized_path
+        # 默认回退
+        fallback = os.path.abspath(os.path.join(data_dir, normalized_path))
+        logger.warning(f"[路径解析] 未能找到真实路径: {annotation_folder}，回退为: {fallback}")
+        return fallback
 
     resolved_path = _resolve()
     with _cache_lock:
@@ -1361,15 +1344,30 @@ def load_annotations():
 
         # 解析文件夹路径（支持绝对路径到相对路径的回退）
         resolved_folder_path = resolve_folder_path(folder_path, folder_path)
-        if not os.path.exists(resolved_folder_path):
-            logger.warning(
-                f"[标注交互] 解析后的文件夹路径不存在: {resolved_folder_path}，尝试使用原始路径: {folder_path}")
-            resolved_folder_path = folder_path
-
         annotations_file = get_annotations_file_path(resolved_folder_path)
 
+        # 核心逻辑：如果绝对路径找不到文件，尝试退化为项目 data 目录下的相对路径
         if not os.path.exists(annotations_file):
-            logger.info(f"[标注交互] 标注文件不存在，返回空数据: {annotations_file}")
+            logger.info(
+                f"[标注交互] 路径 {resolved_folder_path} 下未找到标注文件，尝试在 data 目录下寻找相对路径")
+            # 提取 folder_path 的末尾部分作为相对路径
+            path_parts = folder_path.replace('\\', '/').split('/')
+            if 'data' in path_parts:
+                rel_parts = path_parts[path_parts.index('data')+1:]
+            else:
+                rel_parts = [p for p in path_parts if p and not (
+                    len(p) >= 2 and p[1] == ':')]
+
+            if rel_parts:
+                degraded_path = os.path.join(PROJECT_ROOT, 'data', *rel_parts)
+                degraded_file = get_annotations_file_path(degraded_path)
+                if os.path.exists(degraded_file):
+                    logger.info(f"[标注交互] 成功在退化路径找到文件: {degraded_file}")
+                    resolved_folder_path = degraded_path
+                    annotations_file = degraded_file
+
+        if not os.path.exists(annotations_file):
+            logger.info(f"[标注交互] 最终未找到标注文件: {annotations_file}")
             return jsonify({
                 'success': True,
                 'annotations': {}
